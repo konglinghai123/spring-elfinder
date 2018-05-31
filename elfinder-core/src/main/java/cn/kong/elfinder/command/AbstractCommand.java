@@ -47,6 +47,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
+import java.util.concurrent.*;
 
 public abstract class AbstractCommand implements ElfinderCommand {
 
@@ -66,7 +67,7 @@ public abstract class AbstractCommand implements ElfinderCommand {
         for (VolumeHandler f : target.listChildren()) {
             if (f.isFolder()) {
                 map.put(f.getHash(), f);
-                addSubFolders(map, f);
+//                addSubFolders(map, f);
             }
         }
     }
@@ -109,11 +110,26 @@ public abstract class AbstractCommand implements ElfinderCommand {
     public abstract void execute(ElfinderStorage elfinderStorage, HttpServletRequest request, HttpServletResponse response) throws Exception;
 
     protected Object[] buildJsonFilesArray(HttpServletRequest request, Collection<VolumeHandler> list) throws IOException {
+
+        Date start = new Date();
+        ExecutorService executor = Executors.newCachedThreadPool();
+        CountDownLatch latch = new CountDownLatch(list.size());
         List<Map<String, Object>> jsonFileList = new ArrayList<>();
+
         for (VolumeHandler itemHandler : list) {
-            jsonFileList.add(getTargetInfo(request, itemHandler));
+            executor.execute(new Task(jsonFileList,request,itemHandler,latch));
         }
 
+        try {
+            latch.await();
+            executor.shutdown();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        Date end = new Date();
+
+        System.out.println(end.getTime() - start.getTime()+"ms");
         return jsonFileList.toArray();
     }
 
@@ -188,5 +204,33 @@ public abstract class AbstractCommand implements ElfinderCommand {
         options.put(ElFinderConstants.ELFINDER_PARAMETER_OVERWRITE_FILE, ElFinderConstants.ELFINDER_TRUE_RESPONSE);
         options.put(ElFinderConstants.ELFINDER_PARAMETER_ARCHIVERS, ArchiverOption.JSON_INSTANCE());
         return options;
+    }
+
+    class Task implements Runnable{
+
+        private HttpServletRequest request;
+
+        private VolumeHandler itemHandler;
+
+        private List<Map<String, Object>> jsonFileList;
+
+        private CountDownLatch downLatch;
+
+        public Task (List<Map<String, Object>> jsonFileList,HttpServletRequest request,VolumeHandler itemHandler,CountDownLatch downLatch){
+            this.jsonFileList = jsonFileList;
+            this.request = request;
+            this.itemHandler = itemHandler;
+            this.downLatch = downLatch;
+        }
+
+        @Override
+        public void run()  {
+            try {
+                jsonFileList.add(getTargetInfo(request, itemHandler));
+                downLatch.countDown();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
