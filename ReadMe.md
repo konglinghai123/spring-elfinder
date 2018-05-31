@@ -1,5 +1,6 @@
 ### 基于Spring-boot 和 elfinder 的在线文件管理系统
-
+#### 效果图
+https://www.jianshu.com/p/67a1e7725dae
 #### 功能
 - 支持在线文件下载
 - 支持目录上传
