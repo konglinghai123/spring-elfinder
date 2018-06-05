@@ -47,7 +47,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public abstract class AbstractCommand implements ElfinderCommand {
 
@@ -111,7 +113,6 @@ public abstract class AbstractCommand implements ElfinderCommand {
 
     protected Object[] buildJsonFilesArray(HttpServletRequest request, Collection<VolumeHandler> list) throws IOException {
 
-        Date start = new Date();
         ExecutorService executor = Executors.newCachedThreadPool();
         CountDownLatch latch = new CountDownLatch(list.size());
         List<Map<String, Object>> jsonFileList = new ArrayList<>();
@@ -127,9 +128,6 @@ public abstract class AbstractCommand implements ElfinderCommand {
             e.printStackTrace();
         }
 
-        Date end = new Date();
-
-        System.out.println(end.getTime() - start.getTime()+"ms");
         return jsonFileList.toArray();
     }
 

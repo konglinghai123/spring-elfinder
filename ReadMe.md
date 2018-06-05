@@ -1,5 +1,8 @@
 ### 基于Spring-boot 和 elfinder 的在线文件管理系统
 
+#### 效果图
+https://www.jianshu.com/p/67a1e7725dae
+
 #### 功能
 - 支持在线文件下载
 - 支持目录上传
@@ -34,6 +37,25 @@ file-manager:
     cd spring-web
     mvn spring-boot:run
 ```
+#### war包运行（放在tomcat ROOT 目录运行即可）
+```
+      <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
 
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-tomcat</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-tomcat</artifactId>
+            <scope>provided</scope>
+        </dependency>
+```
 #### 访问
 http://127.0.0.1:8080

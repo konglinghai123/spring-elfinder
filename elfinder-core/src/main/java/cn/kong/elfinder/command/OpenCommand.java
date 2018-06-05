@@ -38,7 +38,10 @@ import cn.kong.elfinder.service.VolumeHandler;
 import com.alibaba.fastjson.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 
 public class OpenCommand extends AbstractJsonCommand implements ElfinderCommand {
 
