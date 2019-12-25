@@ -111,7 +111,7 @@ public abstract class AbstractCommand implements ElfinderCommand {
 
     public abstract void execute(ElfinderStorage elfinderStorage, HttpServletRequest request, HttpServletResponse response) throws Exception;
 
-    protected Object[] buildJsonFilesArray(HttpServletRequest request, Collection<VolumeHandler> list) throws IOException {
+    protected Object[] buildJsonFilesArray(HttpServletRequest request, Collection<VolumeHandler> list) {
 
         ExecutorService executor = Executors.newCachedThreadPool();
         CountDownLatch latch = new CountDownLatch(list.size());
@@ -131,7 +131,7 @@ public abstract class AbstractCommand implements ElfinderCommand {
         return jsonFileList.toArray();
     }
 
-    protected VolumeHandler findCwd(ElfinderStorage elfinderStorage, String target) throws IOException {
+    protected VolumeHandler findCwd(ElfinderStorage elfinderStorage, String target) {
         VolumeHandler cwd = null;
         if (target != null) {
             cwd = findTarget(elfinderStorage, target);
@@ -143,7 +143,7 @@ public abstract class AbstractCommand implements ElfinderCommand {
         return cwd;
     }
 
-    protected VolumeHandler findTarget(ElfinderStorage elfinderStorage, String hash) throws IOException {
+    protected VolumeHandler findTarget(ElfinderStorage elfinderStorage, String hash) {
         Target target = elfinderStorage.fromHash(hash);
         if (target == null) {
             return null;
@@ -151,7 +151,7 @@ public abstract class AbstractCommand implements ElfinderCommand {
         return new VolumeHandler(target, elfinderStorage);
     }
 
-    protected List<Target> findTargets(ElfinderStorage elfinderStorage, String[] targetHashes) throws IOException {
+    protected List<Target> findTargets(ElfinderStorage elfinderStorage, String[] targetHashes) {
         if (elfinderStorage != null && targetHashes != null) {
             List<Target> targets = new ArrayList<>(targetHashes.length);
             for (String targetHash : targetHashes) {
@@ -178,6 +178,8 @@ public abstract class AbstractCommand implements ElfinderCommand {
         if (target.getMimeType() != null && target.getMimeType().startsWith("image")) {
             StringBuffer qs = request.getRequestURL();
             info.put(ElFinderConstants.ELFINDER_PARAMETER_THUMBNAIL, qs.append(String.format(CMD_TMB_TARGET, target.getHash())));
+        }else if(target.getMimeType() != null && target.getMimeType().contains("zip")) {
+        	info.put(ElFinderConstants.ELFINDER_PARAMETER_ARCHIVERS_KEY, target.getHash());
         }
 
         if (target.isRoot()) {

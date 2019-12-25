@@ -34,14 +34,17 @@ package cn.kong.elfinder.command;
 import cn.kong.elfinder.ElFinderConstants;
 import cn.kong.elfinder.service.ElfinderStorage;
 import cn.kong.elfinder.service.VolumeHandler;
+import cn.kong.elfinder.util.HashesUtil;
 import com.alibaba.fastjson.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class MkdirCommand extends AbstractJsonCommand implements ElfinderCommand {
+	
     @Override
     protected void execute(ElfinderStorage elfinderStorage, HttpServletRequest request, JSONObject json) throws Exception {
         String target = request.getParameter(ElFinderConstants.ELFINDER_PARAMETER_TARGET);
@@ -49,15 +52,17 @@ public class MkdirCommand extends AbstractJsonCommand implements ElfinderCommand
 
         if(dirName == null){
             String[] paramMap = request.getParameterMap().get(ElFinderConstants.ELFINDER_PARAMETER_DIRS);
-            List<Map> list = new ArrayList<>();
+            List<Map<String, Object>> list = new ArrayList<>();
+            Map<String,Object> hashes = new HashMap<>();
             for(String dir : paramMap){
                 VolumeHandler volumeHandler = findTarget(elfinderStorage, target);
                 VolumeHandler directory = new VolumeHandler(volumeHandler, dir);
                 directory.createFolder();
                 list.add(getTargetInfo(request, directory));
+                hashes.put(dir, target +  HashesUtil.encode(dir));
             }
-
             json.put(ElFinderConstants.ELFINDER_JSON_RESPONSE_ADDED,list);
+            json.put(ElFinderConstants.ELFINDER_JSON_RESPONSE_HASHES,hashes);
         }else{
             VolumeHandler volumeHandler = findTarget(elfinderStorage, target);
             VolumeHandler directory = new VolumeHandler(volumeHandler, dirName);

@@ -38,7 +38,7 @@ public final class ElFinderConstants {
     public static final int ELFINDER_FALSE_RESPONSE = 0;
 
     //options
-    public static final String ELFINDER_VERSION_API = "2.1";
+    public static final String ELFINDER_VERSION_API = "2.1050";
 
     //security
     // regex that matches any character that
@@ -49,6 +49,7 @@ public final class ElFinderConstants {
     public static final String ELFINDER_PARAMETER_INIT = "init";
     public static final String ELFINDER_PARAMETER_TREE = "tree";
     public static final String ELFINDER_PARAMETER_TARGET = "target";
+    public static final String ELFINDER_PARAMETER_UPLOADS = "upload_path[]";
     public static final String ELFINDER_PARAMETER_API = "api";
     public static final String ELFINDER_PARAMETER_NETDRIVERS = "netDrivers";
     public static final String ELFINDER_PARAMETER_FILES = "files";
@@ -71,6 +72,7 @@ public final class ElFinderConstants {
     public static final String ELFINDER_PARAMETER_FILE_SEPARATOR = "/";
     public static final String ELFINDER_PARAMETER_OVERWRITE_FILE = "copyOverwrite";
     public static final String ELFINDER_PARAMETER_ARCHIVERS = "archivers";
+    public static final String ELFINDER_PARAMETER_ARCHIVERS_KEY = "file";
     public static final String ELFINDER_PARAMETER_COMMAND = "cmd";
     public static final String ELFINDER_PARAMETER_TARGETS = "targets[]";
     public static final String ELFINDER_PARAMETER_DIRS = "dirs[]";
@@ -81,9 +83,12 @@ public final class ElFinderConstants {
     public static final String ELFINDER_PARAMETER_FILE_DESTINATION = "dst";
     public static final String ELFINDER_PARAMETER_CUT = "cut";
     public static final String ELFINDER_PARAMETER_TYPE = "type";
+    public static final String ELFINDER_PARAMETER_ZIPDL = "zipdl";
+    public static final String ELFINDER_PARAMETER_DOWNLOAD = "download";
 
     //api commands json header
     public static final String ELFINDER_JSON_RESPONSE_ADDED = "added";
+    public static final String ELFINDER_JSON_RESPONSE_HASHES = "hashes";
     public static final String ELFINDER_JSON_RESPONSE_REMOVED = "removed";
     public static final String ELFINDER_JSON_RESPONSE_CHANGED = "changed";
     public static final String ELFINDER_JSON_RESPONSE_DIM = "dim";
