@@ -2,6 +2,7 @@
  * elFinder - file manager for web
  * Version 2.1.50 (2019-08-20)
  * http://elfinder.org
+ * 2019年12月30日 自行修改
  * 
  * Copyright 2009-2019, Studio 42
  * Licensed under a 3-clauses BSD license
@@ -6825,7 +6826,7 @@ elFinder.prototype = {
 							chunks = -1;
 							total = Math.floor((blobSize - 1) / BYTES_PER_CHUNK);
 							blobMtime = blob.lastModified? Math.round(blob.lastModified/1000) : 0;
-							blobName = data.clipdata? fm.date(fm.nonameDateFormat) + '.png' : blob.name;
+							blobName = data.clipdata? fm.date(fm.nonameDateFormat) + '.png' : blob.name = blob.webkitRelativePath || blob.relativePath || blob.name;
 
 							totalSize += blobSize;
 							chunked[chunkID] = 0;
@@ -7000,8 +7001,7 @@ elFinder.prototype = {
 									name = fm.date(fm.nonameDateFormat) + '.png';
 								}
 							} else {
-								/*if (file.name) {
-									name = file.name;
+								if (name = file.webkitRelativePath || file.relativePath || file.name) {
 									if (fm.UA.iOS) {
 										if (name.match(/^image\.jpe?g$/i)) {
 											data.overwrite = 0;
@@ -7011,7 +7011,7 @@ elFinder.prototype = {
 											name = fm.date(fm.nonameDateFormat) + '.mov';
 										}
 									}
-								}*/
+								}
 							}
 							name? formData.append('upload[]', file, name) : formData.append('upload[]', file);
 						}

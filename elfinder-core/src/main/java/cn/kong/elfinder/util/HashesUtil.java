@@ -28,7 +28,7 @@ public class HashesUtil {
 	public static void main(String[] args) {
 		System.out.println(encode("opt"));
 		System.out.println(decode("b3B0XEFyY2hpdmUuemlw"));
-		System.out.println(decode("b3B0XOasoui_SjuS9v_PeUqCBXb3JkLmRvY3g_E"));
+		System.out.println(decode("b3B0L_PacrOacuueFp_PeJhw_E_E"));
 		System.out.println("opt\\constants\\新建文本文档 (2).txt".substring("opt\\constants".length() + 1));
 	}
 }
