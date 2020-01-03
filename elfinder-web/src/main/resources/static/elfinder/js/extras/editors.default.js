@@ -20,22 +20,87 @@
 			}
 			return hasFlash;
 		})(),
+		ext2mime = {
+			bmp: 'image/x-ms-bmp',
+			dng: 'image/x-adobe-dng',
+			gif: 'image/gif',
+			jpeg: 'image/jpeg',
+			jpg: 'image/jpeg',
+			pdf: 'application/pdf',
+			png: 'image/png',
+			ppm: 'image/x-portable-pixmap',
+			psd: 'image/vnd.adobe.photoshop',
+			pxd: 'image/x-pixlr-data',
+			svg: 'image/svg+xml',
+			tiff: 'image/tiff',
+			webp: 'image/webp',
+			xcf: 'image/x-xcf',
+			sketch: 'application/x-sketch'
+		},
+		mime2ext,
+		getExtention = function(mime, fm) {
+			if (!mime2ext) {
+				mime2ext = fm.arrayFlip(ext2mime);
+			}
+			var ext = mime2ext[mime] || fm.mimeTypes[mime];
+			if (ext === 'jpeg') {
+				ext = 'jpg';
+			}
+			return ext;
+		},
+		changeImageType = function(src, toMime) {
+			var dfd = $.Deferred();
+			try {
+				var canvas = document.createElement('canvas'),
+					ctx = canvas.getContext('2d'),
+					img = new Image(),
+					conv = function() {
+						var url = canvas.toDataURL(toMime),
+							mime, m;
+						if (m = url.match(/^data:([a-z0-9]+\/[a-z0-9.+-]+)/i)) {
+							mime = m[1];
+						} else {
+							mime = '';
+						}
+						if (mime.toLowerCase() === toMime.toLowerCase()) {
+							dfd.resolve(canvas.toDataURL(toMime), canvas);
+						} else {
+							dfd.reject();
+						}
+					};
+
+				img.src = src;
+				$(img).on('load', function() {
+					try {
+						canvas.width = img.width;
+						canvas.height = img.height;
+						ctx.drawImage(img, 0, 0);
+						conv();
+					} catch(e) {
+						dfd.reject();
+					}
+				}).on('error', function () {
+					dfd.reject();
+				});
+				return dfd;
+			} catch(e) {
+				return dfd.reject();
+			}
+		},
 		initImgTag = function(id, file, content, fm) {
-			var node = $(this).children('img:first'),
-				spnr = $('<div/>')
-					.css({
-						position: 'absolute',
-						top: '50%',
-						textAlign: 'center',
-						width: '100%',
-						fontSize: '16pt'
-					})
-					.html(fm.i18n('ntfloadimg'))
+			var node = $(this).children('img:first').data('ext', getExtention(file.mime, fm)),
+				spnr = $('<div class="elfinder-edit-spinner elfinder-edit-image"/>')
+					.html('<span class="elfinder-spinner-text">' + fm.i18n('ntfloadimg') + '</span><span class="elfinder-spinner"/>')
 					.hide()
-					.appendTo(this);
+					.appendTo(this),
+				url;
 			
+			if (!content.match(/^data:/)) {
+				url = fm.openUrl(file.hash);
+				node.attr('_src', content);
+			}
 			node.attr('id', id+'-img')
-				.attr('src', content)
+				.attr('src', url || content)
 				.css({'height':'', 'max-width':'100%', 'max-height':'100%', 'cursor':'pointer'})
 				.data('loading', function(done) {
 					var btns = node.closest('.elfinder-dialog').find('button,.elfinder-titlebar-button');
@@ -74,7 +139,7 @@
 			}
 			var pixlr = window.location.search.match(/[?&]pixlr=([^&]+)/),
 				image = window.location.search.match(/[?&]image=([^&]+)/),
-				p, ifm, url, node;
+				p, ifm, url, node, ext;
 			if (pixlr) {
 				// case of redirected from pixlr.com
 				p = window.parent;
@@ -82,6 +147,13 @@
 				node = p.$('#'+pixlr[1]).data('resizeoff')();
 				if (image[1].substr(0, 4) === 'http') {
 					url = image[1];
+					ext = url.replace(/.+\.([^.]+)$/, '$1');
+					if (node.data('ext') !== ext) {
+						node.closest('.ui-dialog').trigger('changeType', {
+							extention: ext,
+							mime : ext2mime[ext]
+						});
+					}
 					if (window.location.protocol === 'https:') {
 						url = url.replace(/^http:/, 'https:');
 					}
@@ -93,7 +165,7 @@
 				} else {
 					node.data('loading')(true);
 				}
-				ifm.remove();
+				ifm.trigger('destroy').remove();
 			}
 		},
 		pixlrSetup = function(opts, fm) {
@@ -117,26 +189,46 @@
 					}),
 				dialog = $(base).closest('.ui-dialog'),
 				elfNode = fm.getUI(),
+				uiToast = fm.getUI('toast'),
 				container = $('<iframe class="ui-front" allowtransparency="true">'),
 				file = this.file,
+				timeout = 15,
 				error = function(error) {
-					container.remove();
-					node.data('loading')(true);
-					fm.error(error || 'Can not launch Pixlr.');
+					if (error) {
+						container.trigger('destroy').remove();
+						node.data('loading')(true);
+						fm.error(error);
+					} else {
+						uiToast.appendTo(dialog.closest('.ui-dialog'));
+						fm.toast({
+							mode: 'info',
+							msg: 'Can not launch Pixlr yet. Waiting ' + timeout + ' seconds.',
+							button: {
+								text: 'Abort',
+								click: function() {
+									container.trigger('destroy').remove();
+									node.data('loading')(true);
+								}
+							},
+							onHidden: function() {
+								uiToast.children().length === 1 && uiToast.appendTo(fm.getUI());
+							}
+						});
+						errtm = setTimeout(error, timeout * 1000);
+					}
 				},
 				launch = function() {
 					var src = 'https://pixlr.com/'+mode+'/?s=c',
 						myurl = window.location.href.toString().replace(/#.*$/, ''),
 						opts = {};
 
-					errtm = setTimeout(error, 15000);
+					errtm = setTimeout(error, timeout * 1000);
 					myurl += (myurl.indexOf('?') === -1? '?' : '&') + 'pixlr='+node.attr('id');
 					src += '&referrer=elFinder&locktitle=true';
 					src += '&exit='+encodeURIComponent(myurl+'&image=0');
 					src += '&target='+encodeURIComponent(myurl);
 					src += '&title='+encodeURIComponent(file.name);
-					src += '&locktype='+encodeURIComponent(file.mime === 'image/png'? 'png' : 'jpg');
-					src += '&image='+encodeURIComponent(node.attr('src'));
+					src += '&image='+encodeURIComponent(node.attr('_src'));
 					
 					opts.src = src;
 					opts.css = {
@@ -162,7 +254,7 @@
 						.attr('id', node.attr('id')+'iframe')
 						.attr('src', opts.src)
 						.css(opts.css)
-						.on('load', function() {
+						.one('load', function() {
 							errtm && clearTimeout(errtm);
 							setTimeout(function() {
 								if (container.is(':hidden')) {
@@ -170,17 +262,52 @@
 								}
 							}, 1000);
 							dialog.addClass(clPreventBack);
+							fm.toggleMaximize(container, true);
 							fm.toFront(container);
+						})
+						.on('destroy', function() {
+							fm.toggleMaximize(container, false);
 						})
 						.on('error', error)
 						.appendTo(elfNode.hasClass('elfinder-fullscreen')? elfNode : 'body');
-					// fit to window size
-					$(window).on('resize.'+node.attr('id'), function() {
-						container.css('height', $(window).height());
-					});
 				},
 				errtm;
+			$(base).on('saveAsFail', launch);
 			launch();
+		},
+		iframeClose = function(ifm) {
+			var $ifm = $(ifm),
+				dfd = $.Deferred().always(function() {
+					$ifm.off('load', load);
+				}),
+				ab = 'about:blank',
+				chk = function() {
+					tm = setTimeout(function() {
+						var src;
+						try {
+							src = base.contentWindow.location.href;
+						} catch(e) {
+							src = null;
+						}
+						if (src === ab) {
+							dfd.resolve();
+						} else if (--cnt > 0){
+							chk();
+						} else {
+							dfd.reject();
+						}
+					}, 500);
+				},
+				load = function() {
+					tm && clearTimeout(tm);
+					dfd.resolve();
+				},
+				cnt = 20, // 500ms * 20 = 10sec wait
+				tm;
+			$ifm.one('load', load);
+			ifm.src = ab;
+			chk();
+			return dfd;
 		};
 	
 	// check callback from pixlr
@@ -199,40 +326,302 @@
 				fm.destroy();
 				window.close();
 			};
-		} else if (getfile === 'tinymce') {
-			elFinder.prototype._options.getFileCallback = function(file, fm) {
-				// pass selected file data to TinyMCE
-				parent.tinymce.activeEditor.windowManager.getParams().oninsert(file, fm);
-				// close popup window
-				parent.tinymce.activeEditor.windowManager.close();
-			};
 		}
 	}
 	
 	// return editors Array
 	return [
 		{
+			// tui.image-editor - https://github.com/nhnent/tui.image-editor
+			info : {
+				id: 'tuiimgedit',
+				name: 'TUI Image Editor',
+				iconImg: 'img/editor-icons.png 0 -48',
+				dataScheme: true,
+				schemeContent: true,
+				openMaximized: true,
+				canMakeEmpty: false,
+				integrate: {
+					title: 'TOAST UI Image Editor',
+					link: 'http://ui.toast.com/tui-image-editor/'
+				}
+			},
+			// MIME types to accept
+			mimes : ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/x-ms-bmp'],
+			// HTML of this editor
+			html : '<div class="elfinder-edit-imageeditor"><canvas></canvas></div>',
+			// called on initialization of elFinder cmd edit (this: this editor's config object)
+			setup : function(opts, fm) {
+				if (fm.UA.ltIE8 || fm.UA.Mobile) {
+					this.disabled = true;
+				} else {
+					this.opts = Object.assign({
+						version: 'v3.5.2'
+					}, opts.extraOptions.tuiImgEditOpts || {}, {
+						iconsPath : fm.baseUrl + 'img/tui-',
+						theme : {}
+					});
+					if (!fm.isSameOrigin(this.opts.iconsPath)) {
+						this.disabled = true;
+						fm.debug('warning', 'Setting `commandOptions.edit.extraOptions.tuiImgEditOpts.iconsPath` MUST follow the same origin policy.');
+					}
+				}
+			},
+			// Initialization of editing node (this: this editors HTML node)
+			init : function(id, file, content, fm) {
+				this.data('url', content);
+			},
+			load : function(base) {
+				var self = this,
+					fm   = this.fm,
+					dfrd = $.Deferred(),
+					cdns = fm.options.cdns,
+					ver  = self.confObj.opts.version,
+					init = function(editor) {
+						var $base = $(base),
+							bParent = $base.parent(),
+							opts = self.confObj.opts,
+							iconsPath = opts.iconsPath,
+							tmpContainer = $('<div class="tui-image-editor-container">').appendTo(bParent),
+							tmpDiv = [
+								$('<div class="tui-image-editor-submenu"/>').appendTo(tmpContainer),
+								$('<div class="tui-image-editor-controls"/>').appendTo(tmpContainer)
+							],
+							iEditor = new editor(base, {
+								includeUI: {
+									loadImage: {
+										path: $base.data('url'),
+										name: self.file.name
+									},
+									theme: Object.assign(opts.theme, {
+										'menu.normalIcon.path': iconsPath + 'icon-d.svg',
+										'menu.normalIcon.name': 'icon-d',
+										'menu.activeIcon.path': iconsPath + 'icon-b.svg',
+										'menu.activeIcon.name': 'icon-b',
+										'menu.disabledIcon.path': iconsPath + 'icon-a.svg',
+										'menu.disabledIcon.name': 'icon-a',
+										'menu.hoverIcon.path': iconsPath + 'icon-c.svg',
+										'menu.hoverIcon.name': 'icon-c',
+										'submenu.normalIcon.path': iconsPath + 'icon-d.svg',
+										'submenu.normalIcon.name': 'icon-d',
+										'submenu.activeIcon.path': iconsPath + 'icon-c.svg',
+										'submenu.activeIcon.name': 'icon-c'
+									}),
+									initMenu: 'filter',
+									menuBarPosition: 'bottom'
+								},
+								cssMaxWidth: Math.max(300, bParent.width()),
+								cssMaxHeight: Math.max(200, bParent.height() - (tmpDiv[0].height() + tmpDiv[1].height() + 3 /*margin*/)),
+								usageStatistics: false
+							}),
+							canvas = $base.find('canvas:first').get(0),
+							zoom = function(v) {
+								if (typeof v !== 'undefined') {
+									var c = $(canvas),
+										w = parseInt(c.attr('width')),
+										h = parseInt(c.attr('height')),
+										a = w / h,
+										mw, mh;
+									if (v === 0) {
+										mw = w;
+										mh = h;
+									} else {
+										mw = parseInt(c.css('max-width')) + Number(v);
+										mh = mw / a;
+										if (mw > w && mh > h) {
+											mw = w;
+											mh = h;
+										}
+									}
+									per.text(Math.round(mw / w * 100) + '%');
+									iEditor.resizeCanvasDimension({width: mw, height: mh});
+									// continually change more
+									if (zoomMore) {
+										setTimeout(function() {
+											zoomMore && zoom(v);
+										}, 50);
+									}
+								}
+							},
+							zup = $('<span class="ui-icon ui-icon-plusthick"/>').data('val', 10),
+							zdown = $('<span class="ui-icon ui-icon-minusthick"/>').data('val', -10),
+							per = $('<button/>').css('width', '4em').text('%').attr('title', '100%').data('val', 0),
+							quty, qutyTm, zoomTm, zoomMore;
+
+						tmpContainer.remove();
+						$base.removeData('url').data('mime', self.file.mime);
+						// jpeg quality controls
+						if (self.file.mime === 'image/jpeg') {
+							$base.data('quality', fm.storage('jpgQuality') || fm.option('jpgQuality'));
+							quty = $('<input type="number" class="ui-corner-all elfinder-resize-quality elfinder-tabstop"/>')
+								.attr('min', '1')
+								.attr('max', '100')
+								.attr('title', '1 - 100')
+								.on('change', function() {
+									var q = quty.val();
+									$base.data('quality', q);
+									qutyTm && cancelAnimationFrame(qutyTm);
+									qutyTm = requestAnimationFrame(function() {
+										canvas.toBlob(function(blob) {
+											blob && quty.next('span').text(' (' + fm.formatSize(blob.size) + ')');
+										}, 'image/jpeg', Math.max(Math.min(q, 100), 1) / 100);
+									});
+								})
+								.val($base.data('quality'));
+							$('<div class="ui-dialog-buttonset elfinder-edit-extras elfinder-edit-extras-quality"/>')
+								.append(
+									$('<span>').html(fm.i18n('quality') + ' : '), quty, $('<span/>')
+								)
+								.prependTo($base.parent().next());
+						} else if (self.file.mime === 'image/svg+xml') {
+							$base.closest('.ui-dialog').trigger('changeType', {
+								extention: 'png',
+								mime : 'image/png',
+								keepEditor: true
+							});
+						}
+						// zoom scale controls
+						$('<div class="ui-dialog-buttonset elfinder-edit-extras"/>')
+							.append(
+								zdown, per, zup
+							)
+							.attr('title', fm.i18n('scale'))
+							.on('click', 'span,button', function() {
+								zoom($(this).data('val'));
+							})
+							.on('mousedown mouseup mouseleave', 'span', function(e) {
+								zoomMore = false;
+								zoomTm && clearTimeout(zoomTm);
+								if (e.type === 'mousedown') {
+									zoomTm = setTimeout(function() {
+										zoomMore = true;
+										zoom($(e.target).data('val'));
+									}, 500);
+								}
+							})
+							.prependTo($base.parent().next());
+
+						// wait canvas ready
+						setTimeout(function() {
+							dfrd.resolve(iEditor);
+							if (quty) {
+								quty.trigger('change');
+								iEditor.on('redoStackChanged undoStackChanged', function() {
+									quty.trigger('change');
+								});
+							}
+							// show initial scale
+							zoom(null);
+						}, 100);
+					},
+					loader;
+
+				if (!self.confObj.editor) {
+					loader = $.Deferred();
+					fm.loadCss([
+						cdns.tui + '/tui-color-picker/latest/tui-color-picker.css',
+						cdns.tui + '/tui-image-editor/'+ver+'/tui-image-editor.css'
+					]);
+					if (fm.hasRequire) {
+						require.config({
+							paths : {
+								'fabric/dist/fabric.require' : cdns.fabric16 + '/fabric.require.min',
+								'tui-code-snippet' : cdns.tui + '/tui.code-snippet/latest/tui-code-snippet.min',
+								'tui-color-picker' : cdns.tui + '/tui-color-picker/latest/tui-color-picker.min',
+								'tui-image-editor' : cdns.tui + '/tui-image-editor/'+ver+'/tui-image-editor.min'
+							}
+						});
+						require(['tui-image-editor'], function(ImageEditor) {
+							loader.resolve(ImageEditor);
+						});
+					} else {
+						fm.loadScript([
+							cdns.fabric16 + '/fabric.min.js',
+							cdns.tui + '/tui.code-snippet/latest/tui-code-snippet.min.js'
+						], function() {
+							fm.loadScript([
+								cdns.tui + '/tui-color-picker/latest/tui-color-picker.min.js'
+							], function() {
+								fm.loadScript([
+									cdns.tui + '/tui-image-editor/'+ver+'/tui-image-editor.min.js'
+								], function() {
+									loader.resolve(window.tui.ImageEditor);
+								}, {
+									loadType: 'tag'
+								});
+							}, {
+								loadType: 'tag'
+							});
+						}, {
+							loadType: 'tag'
+						});
+					}
+					loader.done(function(editor) {
+						self.confObj.editor = editor;
+						init(editor);
+					});
+				} else {
+					init(self.confObj.editor);
+				}
+				return dfrd;
+			},
+			getContent : function(base) {
+				var editor = this.editor,
+					fm = editor.fm,
+					$base = $(base),
+					quality = $base.data('quality');
+				if (editor.instance) {
+					if ($base.data('mime') === 'image/jpeg') {
+						quality = quality || fm.storage('jpgQuality') || fm.option('jpgQuality');
+						quality = Math.max(0.1, Math.min(1, quality / 100));
+					}
+					return editor.instance.toDataURL({
+						format: getExtention($base.data('mime'), fm),
+						quality: quality
+					});
+				}
+			},
+			save : function(base) {
+				var $base = $(base),
+					quality = $base.data('quality'),
+					hash = $base.data('hash'),
+					file;
+				this.instance.deactivateAll();
+				if (typeof quality !== 'undefined') {
+					this.fm.storage('jpgQuality', quality);
+				}
+				if (hash) {
+					file = this.fm.file(hash);
+					$base.data('mime', file.mime);
+				}
+			}
+		},
+		{
 			// Pixlr Editor
 			info : {
 				id : 'pixlreditor',
 				name : 'Pixlr Editor',
-				iconImg : 'img/edit_pixlreditor.png',
+				iconImg : 'img/editor-icons.png 0 -128',
 				urlAsContent: true,
 				schemeContent: true,
-				single: true
+				single: true,
+				canMakeEmpty: true,
+				integrate: {
+					title: 'PIXLR EDITOR',
+					link: 'https://pixlr.com/editor/'
+				}
 			},
 			// MIME types to accept
-			mimes : ['image/jpeg', 'image/png'],
+			mimes : ['image/jpeg', 'image/png', 'image/gif', 'image/x-ms-bmp', 'image/x-pixlr-data'],
 			// HTML of this editor
-			html : '<div style="width:100%;height:300px;max-height:100%;text-align:center;"><img/></div>',
+			html : '<div class="elfinder-edit-imageeditor"><img/></div>',
 			// called on initialization of elFinder cmd edit (this: this editor's config object)
 			setup : function(opts, fm) {
 				pixlrSetup.call(this, opts, fm);
 			},
 			// Initialization of editing node (this: this editors HTML node)
 			init : function(id, file, url, fm) {
-				//initImgTag.call(this, id, file, fm.convAbsUrl(fm.openUrl(file.hash, true)), fm);
-				initImgTag.call(this, id, file, fm.convAbsUrl(url), fm);
+				initImgTag.call(this, id, file, file.size > 0? fm.convAbsUrl(url) : '', fm);
 			},
 			// Get data uri scheme (this: this editors HTML node)
 			getContent : function() {
@@ -249,22 +638,27 @@
 			info : {
 				id: 'pixlrexpress',
 				name : 'Pixlr Express',
-				iconImg : 'img/edit_pixlrexpress.png',
+				iconImg : 'img/editor-icons.png 0 -112',
 				urlAsContent: true,
 				schemeContent: true,
-				single: true
+				single: true,
+				canMakeEmpty: false,
+				integrate: {
+					title: 'PIXLR EXPRESS',
+					link: 'https://pixlr.com/express/'
+				}
 			},
 			// MIME types to accept
-			mimes : ['image/jpeg'],
+			mimes : ['image/jpeg', 'image/png', 'image/gif'],
 			// HTML of this editor
-			html : '<div style="width:100%;height:300px;max-height:100%;text-align:center;"><img/></div>',
+			html : '<div class="elfinder-edit-imageeditor"><img/></div>',
 			// called on initialization of elFinder cmd edit (this: this editor's config object)
 			setup : function(opts, fm) {
 				pixlrSetup.call(this, opts, fm);
 			},
 			// Initialization of editing node (this: this editors HTML node)
 			init : function(id, file, url, fm) {
-				initImgTag.call(this, id, file, fm.convAbsUrl(url), fm);
+				initImgTag.call(this, id, file, file.size > 0? fm.convAbsUrl(url) : '', fm);
 			},
 			// Get data uri scheme (this: this editors HTML node)
 			getContent : function() {
@@ -277,18 +671,451 @@
 			close : function(base) {}
 		},
 		{
+			// Photopea advanced image editor
+			info : {
+				id : 'photopea',
+				name : 'Photopea',
+				iconImg : 'img/editor-icons.png 0 -160',
+				single: true,
+				noContent: true,
+				arrayBufferContent: true,
+				openMaximized: true,
+				canMakeEmpty: ['image/jpeg', 'image/png', 'image/gif', 'image/x-ms-bmp', 'image/tiff', 'image/webp', 'image/vnd.adobe.photoshop', 'image/x-portable-pixmap', 'image/x-sketch'],
+				integrate: {
+					title: 'Photopea',
+					link: 'https://www.photopea.com/learn/'
+				}
+			},
+			mimes : ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/x-ms-bmp', 'image/tiff', 'image/x-adobe-dng', 'image/webp', 'image/x-xcf', 'image/vnd.adobe.photoshop', 'application/pdf', 'image/x-portable-pixmap', 'image/x-sketch'],
+			html : '<iframe style="width:100%;height:100%;border:none;"></iframe>',
+			// setup on elFinder bootup
+			setup : function(opts, fm) {
+				if (fm.UA.IE || fm.UA.Mobile) {
+					this.disabled = true;
+				}
+			},
+			// Initialization of editing node (this: this editors HTML node)
+			init : function(id, file, dum, fm) {
+				var orig = 'https://www.photopea.com',
+					ifm = $(this).hide()
+						//.css('box-sizing', 'border-box')
+						.on('load', function() {
+							//spnr.remove();
+							ifm.show();
+						})
+						.on('error', function() {
+							spnr.remove();
+							ifm.show();
+						}),
+					editor = this.editor,
+					confObj = editor.confObj,
+					spnr = $('<div class="elfinder-edit-spinner elfinder-edit-photopea"/>')
+						.html('<span class="elfinder-spinner-text">' + fm.i18n('nowLoading') + '</span><span class="elfinder-spinner"/>')
+						.appendTo(ifm.parent()),
+					saveMimes = fm.arrayFlip(confObj.info.canMakeEmpty),
+					getType = function(mime) {
+						var ext = getExtention(mime, fm),
+							extmime = ext2mime[ext];
+
+						if (!confObj.mimesFlip[extmime]) {
+							ext = '';
+						} else if (ext === 'jpeg') {
+							ext = 'jpg';
+						}
+						if (!ext || !!saveMimes[ext]) {
+							ext = 'psd';
+							extmime = ext2mime[ext];
+							ifm.closest('.ui-dialog').trigger('changeType', {
+								extention: ext,
+								mime : extmime,
+								keepEditor: true
+							});
+						}
+						return ext;
+					},
+					mime = file.mime,
+					liveMsg, type, quty;
+				
+				if (!confObj.mimesFlip) {
+					confObj.mimesFlip = fm.arrayFlip(confObj.mimes, true);
+				}
+				if (!confObj.liveMsg) {
+					confObj.liveMsg = function(ifm, spnr, file) {
+						var url = fm.openUrl(file.hash);
+							if (!fm.isSameOrigin(url)) {
+								url = fm.openUrl(file.hash, true);
+							}
+						var wnd = ifm.get(0).contentWindow,
+							phase = 0,
+							data = null,
+							dfdIni = $.Deferred().done(function() {
+								spnr.remove();
+								phase = 1;
+								wnd.postMessage(data, '*');
+							}),
+							dfdGet;
+
+						this.load = function() {
+							return fm.request({
+								data    : {cmd : 'get'},
+								options : {
+									url: url,
+									type: 'get',
+									cache : true,
+									dataType : 'binary',
+									responseType :'arraybuffer',
+									processData: false
+								}
+							})
+							.done(function(d) {
+								data = d;
+							});
+						};
+
+						this.receive = function(e) {
+							var ev = e.originalEvent,
+								state;
+							if (ev.origin === orig && ev.source === wnd) {
+								if (ev.data === 'done') {
+									if (phase === 0) {
+										dfdIni.resolve();
+									} else if (phase === 1) {
+										phase = 2;
+										ifm.trigger('contentsloaded');
+									} else {
+										if (dfdGet && dfdGet.state() === 'pending') {
+											dfdGet.reject('errDataEmpty');
+										}
+									}
+								} else {
+									if (dfdGet && dfdGet.state() === 'pending') {
+										if (typeof ev.data === 'object') {
+											dfdGet.resolve('data:' + mime + ';base64,' + fm.arrayBufferToBase64(ev.data));
+										} else {
+											dfdGet.reject('errDataEmpty');
+										}
+									}
+								}
+							}
+						};
+
+						this.getContent = function() {
+							var type, q;
+							if (phase > 1) {
+								dfdGet && dfdGet.state() === 'pending' && dfdGet.reject();
+								dfdGet = null;
+								dfdGet = $.Deferred();
+								if (phase === 2) {
+									phase = 3;
+									dfdGet.resolve('data:' + mime + ';base64,' + fm.arrayBufferToBase64(data));
+									data = null;
+									return dfdGet;
+								}
+								if (ifm.data('mime')) {
+									mime = ifm.data('mime');
+									type = getType(mime);
+								}
+								if (q = ifm.data('quality')) {
+									type += ':' + (q / 100);
+								}
+								wnd.postMessage('app.activeDocument.saveToOE("' + type + '")', orig);
+								return dfdGet;
+							}
+						};
+					};
+				}
+
+				ifm.parent().css('padding', 0);
+				type = getType(file.mime);
+				liveMsg = editor.liveMsg = new confObj.liveMsg(ifm, spnr, file);
+				$(window).on('message.' + fm.namespace, liveMsg.receive);
+				liveMsg.load().done(function() {
+					var d = JSON.stringify({
+						files : [],
+						environment : {
+							lang: fm.lang.replace(/_/g, '-')
+						}
+					});
+					ifm.attr('src', orig + '/#' + encodeURI(d));
+				}).fail(function(err) {
+					err && fm.error(err);
+					editor.initFail = true;
+				});
+
+				// jpeg quality controls
+				if (file.mime === 'image/jpeg' || file.mime === 'image/webp') {
+					ifm.data('quality', fm.storage('jpgQuality') || fm.option('jpgQuality'));
+					quty = $('<input type="number" class="ui-corner-all elfinder-resize-quality elfinder-tabstop"/>')
+						.attr('min', '1')
+						.attr('max', '100')
+						.attr('title', '1 - 100')
+						.on('change', function() {
+							var q = quty.val();
+							ifm.data('quality', q);
+						})
+						.val(ifm.data('quality'));
+					$('<div class="ui-dialog-buttonset elfinder-edit-extras elfinder-edit-extras-quality"/>')
+						.append(
+							$('<span>').html(fm.i18n('quality') + ' : '), quty, $('<span/>')
+						)
+						.prependTo(ifm.parent().next());
+				}
+			},
+			load : function(base) {
+				var dfd = $.Deferred(),
+					self = this,
+					fm = this.fm,
+					$base = $(base);
+				if (self.initFail) {
+					dfd.reject();
+				} else {
+					$base.on('contentsloaded', function() {
+						dfd.resolve(self.liveMsg);
+					});
+				}
+				return dfd;
+			},
+			getContent : function() {
+				return this.editor.liveMsg? this.editor.liveMsg.getContent() : void(0);
+			},
+			save : function(base, liveMsg) {
+				var $base = $(base),
+					quality = $base.data('quality'),
+					hash = $base.data('hash'),
+					file;
+				if (typeof quality !== 'undefined') {
+					this.fm.storage('jpgQuality', quality);
+				}
+				if (hash) {
+					file = this.fm.file(hash);
+					$base.data('mime', file.mime);
+				} else {
+					$base.removeData('mime');
+				}
+			},
+			// On dialog closed
+			close : function(base, liveMsg) {
+				$(base).attr('src', '');
+				liveMsg && $(window).off('message.' + this.fm.namespace, liveMsg.receive);
+			}
+		},
+		{
+			// Pixo is cross-platform image editor
+			info : {
+				id : 'pixo',
+				name : 'Pixo Editor',
+				iconImg : 'img/editor-icons.png 0 -208',
+				dataScheme: true,
+				schemeContent: true,
+				single: true,
+				canMakeEmpty: false,
+				integrate: {
+					title: 'Pixo Editor',
+					link: 'https://pixoeditor.com/privacy-policy/'
+				}
+			},
+			// MIME types to accept
+			mimes : ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/x-ms-bmp'],
+			// HTML of this editor
+			html : '<div class="elfinder-edit-imageeditor"><img/></div>',
+			// called on initialization of elFinder cmd edit (this: this editor's config object)
+			setup : function(opts, fm) {
+				if (fm.UA.ltIE8 || !opts.extraOptions || !opts.extraOptions.pixo || !opts.extraOptions.pixo.apikey) {
+					this.disabled = true;
+				} else {
+					this.editorOpts = opts.extraOptions.pixo;
+				}
+			},
+			// Initialization of editing node (this: this editors HTML node)
+			init : function(id, file, content, fm) {
+				initImgTag.call(this, id, file, content, fm);
+			},
+			// Get data uri scheme (this: this editors HTML node)
+			getContent : function() {
+				return $(this).children('img:first').attr('src');
+			},
+			// Launch Pixo editor when dialog open
+			load : function(base) {
+				var self = this,
+					fm = this.fm,
+					$base = $(base),
+					node = $base.children('img:first'),
+					dialog = $base.closest('.ui-dialog'),
+					elfNode = fm.getUI(),
+					dfrd = $.Deferred(),
+					container = $('#elfinder-pixo-container'),
+					init = function(onload) {
+						var opts;
+							
+						if (!container.length) {
+							container = $('<div id="elfinder-pixo-container" class="ui-front"/>').css({
+								position: 'fixed',
+								top: 0,
+								right: 0,
+								width: '100%',
+								height: $(window).height(),
+								overflow: 'hidden'
+							}).hide().appendTo(elfNode.hasClass('elfinder-fullscreen')? elfNode : 'body');
+							// bind switch fullscreen event
+							elfNode.on('resize.'+fm.namespace, function(e, data) {
+								e.preventDefault();
+								e.stopPropagation();
+								data && data.fullscreen && container.appendTo(data.fullscreen === 'on'? elfNode : 'body');
+							});
+							fm.bind('destroy', function() {
+								editor && editor.cancelEditing();
+								container.remove();
+							});
+						} else {
+							// always moves to last
+							container.appendTo(container.parent());
+						}
+						node.on('click', launch);
+						// Constructor options
+						opts = Object.assign({
+							type: 'child',
+							parent: container.get(0),
+							onSave: function(arg) {
+								// Check current file.hash, all callbacks are called on multiple instances
+								var mime = arg.toBlob().type,
+									ext = getExtention(mime, fm),
+									draw = function(url) {
+										node.one('load error', function() {
+												node.data('loading') && node.data('loading')(true);
+											})
+											.attr('crossorigin', 'anonymous')
+											.attr('src', url);
+									},
+									url = arg.toDataURL();
+								node.data('loading')();
+								delete base._canvas;
+								if (node.data('ext') !== ext) {
+									changeImageType(url, self.file.mime).done(function(res, cv) {
+										if (cv) {
+											base._canvas = canvas = cv;
+											quty.trigger('change');
+											qBase && qBase.show();
+										}
+										draw(res);
+									}).fail(function() {
+										dialog.trigger('changeType', {
+											extention: ext,
+											mime : mime
+										});
+										draw(url);
+									});
+								} else {
+									draw(url);
+								}
+							},
+							onClose: function() {
+								dialog.removeClass(fm.res('class', 'preventback'));
+								fm.toggleMaximize(container, false);
+								container.hide();
+								fm.toFront(dialog);
+							}
+						}, self.confObj.editorOpts);
+						// trigger event 'editEditorPrepare'
+						self.trigger('Prepare', {
+							node: base,
+							editorObj: Pixo,
+							instance: void(0),
+							opts: opts
+						});
+						// make editor instance
+						editor = new Pixo.Bridge(opts);
+						dfrd.resolve(editor);
+						$base.on('saveAsFail', launch);
+						if (onload) {
+							onload();
+						}
+					},
+					launch = function() {
+						dialog.addClass(fm.res('class', 'preventback'));
+						fm.toggleMaximize(container, true);
+						fm.toFront(container);
+						container.show().data('curhash', self.file.hash);
+						editor.edit(node.get(0));
+						node.data('loading')(true);
+					},
+					qBase, quty, qutyTm, canvas, editor;
+
+				node.data('loading')();
+
+				// jpeg quality controls
+				if (self.file.mime === 'image/jpeg') {
+					quty = $('<input type="number" class="ui-corner-all elfinder-resize-quality elfinder-tabstop"/>')
+						.attr('min', '1')
+						.attr('max', '100')
+						.attr('title', '1 - 100')
+						.on('change', function() {
+							var q = quty.val();
+							qutyTm && cancelAnimationFrame(qutyTm);
+							qutyTm = requestAnimationFrame(function() {
+								if (canvas) {
+									canvas.toBlob(function(blob) {
+										blob && quty.next('span').text(' (' + fm.formatSize(blob.size) + ')');
+									}, 'image/jpeg', Math.max(Math.min(q, 100), 1) / 100);
+								}
+							});
+						})
+						.val(fm.storage('jpgQuality') || fm.option('jpgQuality'));
+					qBase = $('<div class="ui-dialog-buttonset elfinder-edit-extras elfinder-edit-extras-quality"/>')
+						.hide()
+						.append(
+							$('<span>').html(fm.i18n('quality') + ' : '), quty, $('<span/>')
+						)
+						.prependTo($base.parent().next());
+					$base.data('quty', quty);
+				}
+
+				// load script then init
+				if (typeof Pixo === 'undefined') {
+					fm.loadScript(['https://pixoeditor.com:8443/editor/scripts/bridge.m.js'], function() {
+						init(launch);
+					}, {loadType: 'tag'});
+				} else {
+					init();
+					launch();
+				}
+				return dfrd;
+			},
+			// Convert content url to data uri scheme to save content
+			save : function(base) {
+				var self = this,
+					$base = $(base),
+					node = $base.children('img:first'),
+					q;
+				if (base._canvas) {
+					q = $base.data('quty')? Math.max(Math.min($base.data('quty').val(), 100), 1) / 100 : void(0);
+					node.attr('src', base._canvas.toDataURL(self.file.mime, q));
+				} else if (node.attr('src').substr(0, 5) !== 'data:') {
+					node.attr('src', imgBase64(node, this.file.mime));
+				}
+			},
+			close : function(base, editor) {
+				editor && editor.destroy();
+			}
+		},
+		{
 			// Adobe Creative SDK Creative Tools Image Editor UI
 			// MIME types to accept
 			info : {
 				id : 'creativecloud',
 				name : 'Creative Cloud',
-				iconImg : 'img/edit_creativecloud.png',
+				iconImg : 'img/editor-icons.png 0 -192',
+				dataScheme: true,
 				schemeContent: true,
-				single: true
+				single: true,
+				canMakeEmpty: false,
+				integrate: {
+					title: 'Adobe Creative Cloud',
+					link: 'https://www.adobe.io/apis/creativecloud.html'
+				}
 			},
-			mimes : ['image/jpeg', 'image/png'],
+			mimes : ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/x-ms-bmp'],
 			// HTML of this editor
-			html : '<div style="width:100%;height:300px;max-height:100%;text-align:center;"><img/></div>',
+			html : '<div class="elfinder-edit-imageeditor"><img/></div>',
 			// called on initialization of elFinder cmd edit (this: this editor's config object)
 			setup : function(opts, fm) {
 				if (fm.UA.ltIE8 || !opts.extraOptions || !opts.extraOptions.creativeCloudApiKey) {
@@ -332,10 +1159,6 @@
 								height: $(window).height(),
 								overflow: 'auto'
 							}).hide().appendTo(elfNode.hasClass('elfinder-fullscreen')? elfNode : 'body');
-							// fit to window size
-							$(window).on('resize.'+fm.namespace, function() {
-								container.css('height', $(window).height());
-							});
 							// bind switch fullscreen event
 							elfNode.on('resize.'+fm.namespace, function(e, data) {
 								e.preventDefault();
@@ -353,7 +1176,15 @@
 						opts = {
 							apiKey: self.confObj.apiKey,
 							onSave: function(imageID, newURL) {
+								var ext;
 								featherEditor.showWaitIndicator();
+								ext = newURL.replace(/.+\.([^.]+)$/, '$1');
+								if (node.data('ext') !== ext) {
+									node.closest('.ui-dialog').trigger('changeType', {
+										extention: ext,
+										mime : ext2mime[ext]
+									});
+								}
 								node.on('load error', function() {
 										node.data('loading')(true);
 									})
@@ -365,6 +1196,7 @@
 							onLoad: onload || function(){},
 							onClose: function() { 
 								dialog.removeClass(fm.res('class', 'preventback'));
+								fm.toggleMaximize(container, false);
 								$(container).hide();
 							},
 							appendTo: container.get(0),
@@ -379,12 +1211,14 @@
 							opts: opts
 						});
 						featherEditor = new Aviary.Feather(opts);
-						container.css('z-index', $(base).closest('.elfinder-dialog').css('z-index'));
 						// return editor instance
 						dfrd.resolve(featherEditor);
+						$(base).on('saveAsFail', launch);
 					},
 					launch = function() {
 						dialog.addClass(fm.res('class', 'preventback'));
+						fm.toggleMaximize(container, true);
+						fm.toFront(container);
 						$(container).show();
 						featherEditor.launch({
 							image: node.attr('id'),
@@ -425,7 +1259,7 @@
 			info : {
 				id : 'aceeditor',
 				name : 'ACE Editor',
-				iconImg : 'img/edit_aceeditor.png'
+				iconImg : 'img/editor-icons.png 0 -96'
 			},
 			load : function(textarea) {
 				var self = this,
@@ -503,6 +1337,9 @@
 							editor.setOptions({
 								mode: 'ace/mode/' + mode
 							});
+							if (dfrd.state() === 'resolved') {
+								dialog.trigger('resize');
+							}
 						});
 						ace.config.loadModule('ace/ext/language_tools', function() {
 							ace.require('ace/ext/language_tools');
@@ -574,7 +1411,7 @@
 								$('#ace_settingsmenu')
 									.css('font-size', '80%')
 									.find('div[contains="setOptions"]').hide().end()
-									.parent().parent().appendTo($('#elfinder'));
+									.parent().appendTo($('#elfinder'));
 							})
 						)
 						.prependTo(taBase.next());
@@ -587,6 +1424,7 @@
 							opts: {}
 						});
 						
+						//dialog.trigger('resize');
 						dfrd.resolve(editor);
 					};
 
@@ -626,7 +1464,7 @@
 			info : {
 				id : 'codemirror',
 				name : 'CodeMirror',
-				iconImg : 'img/edit_codemirror.png'
+				iconImg : 'img/editor-icons.png 0 -176'
 			},
 			load : function(textarea) {
 				var fm = this.fm,
@@ -782,7 +1620,7 @@
 			info : {
 				id : 'simplemde',
 				name : 'SimpleMDE',
-				iconImg : 'img/edit_simplemde.png'
+				iconImg : 'img/editor-icons.png 0 -80'
 			},
 			exts  : ['md'],
 			load : function(textarea) {
@@ -878,15 +1716,20 @@
 			info : {
 				id : 'ckeditor',
 				name : 'CKEditor',
-				iconImg : 'img/edit_ckeditor.png'
+				iconImg : 'img/editor-icons.png 0 0'
 			},
 			exts  : ['htm', 'html', 'xhtml'],
 			setup : function(opts, fm) {
+				var confObj = this;
 				if (!fm.options.cdns.ckeditor) {
-					this.disabled = true;
+					confObj.disabled = true;
 				} else {
-					if (opts.extraOptions && opts.extraOptions.managerUrl) {
-						this.managerUrl = opts.extraOptions.managerUrl;
+					confObj.ckeOpts = {};
+					if (opts.extraOptions) {
+						confObj.ckeOpts = Object.assign({}, opts.extraOptions.ckeditor || {});
+						if (opts.extraOptions.managerUrl) {
+							confObj.managerUrl = opts.extraOptions.managerUrl;
+						}
 					}
 				}
 			},
@@ -949,7 +1792,7 @@
 						});
 
 						// CKEditor configure
-						CKEDITOR.replace(textarea.id, opts);
+						CKEDITOR.replace(textarea.id, Object.assign(opts, self.confObj.ckeOpts));
 						CKEDITOR.on('dialogDefinition', function(e) {
 							var dlg = e.data.definition.dialog;
 							dlg.on('show', function(e) {
@@ -994,7 +1837,7 @@
 			info : {
 				id : 'ckeditor5',
 				name : 'CKEditor5',
-				iconImg : 'img/edit_ckeditor5.png'
+				iconImg : 'img/editor-icons.png 0 -16'
 			},
 			exts : ['htm', 'html', 'xhtml'],
 			html : '<div class="edit-editor-ckeditor5"></div>',
@@ -1002,10 +1845,22 @@
 				var confObj = this;
 				// check cdn and ES6 support
 				if (!fm.options.cdns.ckeditor5 || typeof window.Symbol !== 'function' || typeof Symbol() !== 'symbol') {
-					this.disabled = true;
+					confObj.disabled = true;
 				} else {
-					if (opts.extraOptions && opts.extraOptions.ckeditor5Mode) {
-						this.ckeditor5Mode = opts.extraOptions.ckeditor5Mode;
+					confObj.ckeOpts = {};
+					if (opts.extraOptions) {
+						// @deprecated option extraOptions.ckeditor5Mode
+						if (opts.extraOptions.ckeditor5Mode) {
+							confObj.ckeditor5Mode = opts.extraOptions.ckeditor5Mode;
+						}
+						confObj.ckeOpts = Object.assign({}, opts.extraOptions.ckeditor5 || {});
+						if (confObj.ckeOpts.mode) {
+							confObj.ckeditor5Mode = confObj.ckeOpts.mode;
+							delete confObj.ckeOpts.mode;
+						}
+						if (opts.extraOptions.managerUrl) {
+							confObj.managerUrl = opts.extraOptions.managerUrl;
+						}
 					}
 				}
 				fm.bind('destroy', function() {
@@ -1043,7 +1898,7 @@
 				var self = this,
 					fm   = this.fm,
 					dfrd = $.Deferred(),
-					mode = self.confObj.ckeditor5Mode || 'balloon',
+					mode = self.confObj.ckeditor5Mode || 'inline',
 					lang = (function() {
 						var l = fm.lang.toLowerCase().replace('_', '-');
 						if (l.substr(0, 2) === 'zh' && l !== 'zh-cn') {
@@ -1059,10 +1914,9 @@
 						base.height(fm.getUI().height() - 100);
 
 						// CKEditor5 configure options
-						opts = {
-							toolbar: ['heading', '|', 'bold', 'italic', 'link', 'imageUpload', 'bulletedList', 'numberedList', 'blockQuote', 'undo', 'redo' ],
+						opts = Object.assign({
 							language: lang
-						};
+						}, self.confObj.ckeOpts);
 
 						// trigger event 'editEditorPrepare'
 						self.trigger('Prepare', {
@@ -1075,7 +1929,84 @@
 						cEditor
 							.create(editnode, opts)
 							.then(function(editor) {
-								var fileRepo = editor.plugins.get('FileRepository');
+								var ckf = editor.commands.get('ckfinder'),
+									fileRepo = editor.plugins.get('FileRepository'),
+									prevVars = {}, isImage, insertImages;
+								if (editor.ui.view.toolbar && (mode === 'classic' || mode === 'decoupled-document')) {
+									$(editnode).closest('.elfinder-dialog').children('.ui-widget-header').append(editor.ui.view.toolbar.element);
+								}
+								if (mode === 'classic') {
+									$(editnode).closest('.elfinder-edit-editor').css('overflow', 'auto');
+								}
+								// Set up this elFinder instead of CKFinder
+								if (ckf) {
+									isImage = function(f) {
+										return f && f.mime.match(/^image\//i);
+									};
+									insertImages = function(urls) {
+										var imgCmd = editor.commands.get('imageUpload');
+										if (!imgCmd.isEnabled) {
+											var ntf = editor.plugins.get('Notification'),
+												i18 = editor.locale.t;
+											ntf.showWarning(i18('Could not insert image at the current position.'), {
+												title: i18('Inserting image failed'),
+												namespace: 'ckfinder'
+											});
+											return;
+										}
+										editor.execute('imageInsert', { source: urls });
+									};
+									// Take over ckfinder execute()
+									ckf.execute = function() {
+										var dlg = base.closest('.elfinder-dialog'),
+											gf = fm.getCommand('getfile'),
+											rever = function() {
+												if (prevVars.hasVar) {
+													dlg.off('resize close', rever);
+													gf.callback = prevVars.callback;
+													gf.options.folders = prevVars.folders;
+													gf.options.multiple = prevVars.multi;
+													fm.commandMap.open = prevVars.open;
+													prevVars.hasVar = false;
+												}
+											};
+										dlg.trigger('togleminimize').one('resize close', rever);
+										prevVars.callback = gf.callback;
+										prevVars.folders = gf.options.folders;
+										prevVars.multi = gf.options.multiple;
+										prevVars.open = fm.commandMap.open;
+										prevVars.hasVar = true;
+										gf.callback = function(files) {
+											var imgs = [];
+											if (files.length === 1 && files[0].mime === 'directory') {
+												fm.one('open', function() {
+													fm.commandMap.open = 'getfile';
+												}).getCommand('open').exec(files[0].hash);
+												return;
+											}
+											fm.getUI('cwd').trigger('unselectall');
+											$.each(files, function(i, f) {
+												if (isImage(f)) {
+													imgs.push(fm.convAbsUrl(f.url));
+												} else {
+													editor.execute('link', fm.convAbsUrl(f.url));
+												}
+											});
+											if (imgs.length) {
+												insertImages(imgs);
+											}
+											dlg.trigger('togleminimize');
+										};
+										gf.options.folders = true;
+										gf.options.multiple = true;
+										fm.commandMap.open = 'getfile';
+										fm.toast({
+											mode: 'info',
+											msg: fm.i18n('dblclickToSelect')
+										});
+									};
+								}
+								// Set up image uploader
 								fileRepo.createUploadAdapter = function(loader) {
 									return new uploder(loader);
 								};
@@ -1087,7 +2018,8 @@
 								});
 								dfrd.resolve(editor);
 								/*fm.log({
-									plugins: cEditor.build.plugins.map(function(p) { return p.pluginName; }),
+									defaultConfig: cEditor.defaultConfig,
+									plugins: cEditor.builtinPlugins.map(function(p) { return p.pluginName; }),
 									toolbars: Array.from(editor.ui.componentFactory.names())
 								});*/
 							})
@@ -1096,29 +2028,39 @@
 							});
 					},
 					uploder = function(loader) {
+						var upload = function(file, resolve, reject) {
+							fm.exec('upload', {files: [file]}, void(0), fm.cwd().hash)
+								.done(function(data){
+									if (data.added && data.added.length) {
+										fm.url(data.added[0].hash, { async: true }).done(function(url) {
+											resolve({
+												'default': fm.convAbsUrl(url)
+											});
+										}).fail(function() {
+											reject('errFileNotFound');
+										});
+									} else {
+										reject(fm.i18n(data.error? data.error : 'errUpload'));
+									}
+								})
+								.fail(function(err) {
+									var error = fm.parseError(err);
+									reject(fm.i18n(error? (error === 'userabort'? 'errAbort' : error) : 'errUploadNoFiles'));
+								})
+								.progress(function(data) {
+									loader.uploadTotal = data.total;
+									loader.uploaded = data.progress;
+								});
+						};
 						this.upload = function() {
 							return new Promise(function(resolve, reject) {
-								fm.exec('upload', {files: [loader.file]}, void(0), fm.cwd().hash)
-									.done(function(data){
-										if (data.added && data.added.length) {
-											fm.url(data.added[0].hash, { async: true }).done(function(url) {
-												resolve({
-													'default': fm.convAbsUrl(url)
-												});
-											}).fail(function() {
-												reject('errFileNotFound');
-											});
-										} else {
-											reject(fm.i18n(data.error? data.error : 'errUpload'));
-										}
-									})
-									.fail(function(error) {
-										reject(fm.i18n(error? (error === 'userabort'? 'errAbort' : error) : 'errUploadNoFiles'));
-									})
-									.progress(function(data) {
-										loader.uploadTotal = data.total;
-										loader.uploaded = data.progress;
+								if (loader.file instanceof Promise || (loader.file && typeof loader.file.then === 'function')) {
+									loader.file.then(function(file) {
+										upload(file, resolve, reject);
 									});
+								} else {
+									upload(loader.file, resolve, reject);
+								}
 							});
 						};
 						this.abort = function() {
@@ -1132,7 +2074,7 @@
 						fm.options.cdns.ckeditor5 + '/' + mode + '/ckeditor.js'
 					], function(editor) {
 						if (!editor) {
-							editor = window.BalloonEditor || window.InlineEditor || window.ClassicEditor;
+							editor = window.BalloonEditor || window.InlineEditor || window.ClassicEditor || window.DecoupledEditor;
 						}
 						if (fm.lang !== 'en') {
 							self.fm.loadScript([
@@ -1187,15 +2129,20 @@
 			info : {
 				id : 'tinymce',
 				name : 'TinyMCE',
-				iconImg : 'img/edit_tinymce.png'
+				iconImg : 'img/editor-icons.png 0 -64'
 			},
 			exts  : ['htm', 'html', 'xhtml'],
 			setup : function(opts, fm) {
+				var confObj = this;
 				if (!fm.options.cdns.tinymce) {
-					this.disabled = true;
+					confObj.disabled = true;
 				} else {
-					if (opts.extraOptions && opts.extraOptions.managerUrl) {
-						this.managerUrl = opts.extraOptions.managerUrl;
+					confObj.mceOpts = {};
+					if (opts.extraOptions) {
+						confObj.uploadOpts = Object.assign({}, opts.extraOptions.uploadOpts || {});
+						confObj.mceOpts = Object.assign({}, opts.extraOptions.tinymce || {});
+					} else {
+						confObj.uploadOpts = {};
 					}
 				}
 			},
@@ -1204,37 +2151,53 @@
 					fm   = this.fm,
 					dfrd = $.Deferred(),
 					init = function() {
-						var base = $(textarea).parent(),
+						var base = $(textarea).show().parent(),
 							dlg = base.closest('.elfinder-dialog'),
 							h = base.height(),
 							delta = base.outerHeight(true) - h,
-							opts;
+							// hide MCE dialog and modal block
+							hideMceDlg = function() {
+								var mceW;
+								if (tinymce.activeEditor.windowManager.windows) {
+									mceW = tinymce.activeEditor.windowManager.windows[0];
+									mceDlg = $(mceW? mceW.getEl() : void(0)).hide();
+									mceCv = $('#mce-modal-block').hide();
+								} else {
+									mceDlg = $('.tox-dialog-wrap').hide();
+								}
+							},
+							// Show MCE dialog and modal block
+							showMceDlg = function() {
+								mceCv && mceCv.show();
+								mceDlg && mceDlg.show();
+							},
+							tVer = tinymce.majorVersion,
+							opts, mceDlg, mceCv;
 
 						// set base height
 						base.height(h);
 						// fit height function
 						textarea._setHeight = function(height) {
-							var base = $(this).parent(),
-								h	= height || base.height(),
-								ctrH = 0,
-								areaH;
-							base.find('.mce-container-body:first').children('.mce-toolbar,.mce-toolbar-grp,.mce-statusbar').each(function() {
-								ctrH += $(this).outerHeight(true);
-							});
-							areaH = h - ctrH - delta;
-							base.find('.mce-edit-area iframe:first').height(areaH);
-							return areaH;
+							if (tVer < 5) {
+								var base = $(this).parent(),
+									h = height || base.innerHeight(),
+									ctrH = 0,
+									areaH;
+								base.find('.mce-container-body:first').children('.mce-top-part,.mce-statusbar').each(function() {
+									ctrH += $(this).outerHeight(true);
+								});
+								areaH = h - ctrH - delta;
+								base.find('.mce-edit-area iframe:first').height(areaH);
+							}
 						};
 
 						// TinyMCE configure options
 						opts = {
 							selector: '#' + textarea.id,
 							resize: false,
-							plugins: [
-								'fullpage', // require for getting full HTML
-								'image', 'link', 'media',
-								'code', 'fullscreen'
-							],
+							plugins: 'print preview fullpage searchreplace autolink directionality visualblocks visualchars fullscreen image link media template codesample table charmap hr pagebreak nonbreaking anchor toc insertdatetime advlist lists wordcount imagetools textpattern help',
+							toolbar: 'formatselect | bold italic strikethrough forecolor backcolor | link image media | alignleft aligncenter alignright alignjustify | numlist bullist outdent indent | removeformat',
+							image_advtab: true,
 							init_instance_callback : function(editor) {
 								// fit height on init
 								textarea._setHeight(h);
@@ -1250,52 +2213,122 @@
 								dfrd.resolve(editor);
 							},
 							file_picker_callback : function (callback, value, meta) {
-								var reg = /([&?]getfile=)[^&]+/,
-									loc = self.confObj.managerUrl || window.location.href.replace(/#.*$/, ''),
-									name = 'tinymce';
+								var gf = fm.getCommand('getfile'),
+									revar = function() {
+										if (prevVars.hasVar) {
+											gf.callback = prevVars.callback;
+											gf.options.folders = prevVars.folders;
+											gf.options.multiple = prevVars.multi;
+											fm.commandMap.open = prevVars.open;
+											prevVars.hasVar = false;
+										}
+										dlg.off('resize close', revar);
+										showMceDlg();
+									},
+									prevVars = {};
+								prevVars.callback = gf.callback;
+								prevVars.folders = gf.options.folders;
+								prevVars.multi = gf.options.multiple;
+								prevVars.open = fm.commandMap.open;
+								prevVars.hasVar = true;
+								gf.callback = function(file) {
+									var url, info;
+
+									if (file.mime === 'directory') {
+										fm.one('open', function() {
+											fm.commandMap.open = 'getfile';
+										}).getCommand('open').exec(file.hash);
+										return;
+									}
+
+									// URL normalization
+									url = fm.convAbsUrl(file.url);
+									
+									// Make file info
+									info = file.name + ' (' + fm.formatSize(file.size) + ')';
+
+									// Provide file and text for the link dialog
+									if (meta.filetype == 'file') {
+										callback(url, {text: info, title: info});
+									}
+
+									// Provide image and alt text for the image dialog
+									if (meta.filetype == 'image') {
+										callback(url, {alt: info});
+									}
+
+									// Provide alternative source and posted for the media dialog
+									if (meta.filetype == 'media') {
+										callback(url);
+									}
+									dlg.trigger('togleminimize');
+								};
+								gf.options.folders = true;
+								gf.options.multiple = false;
+								fm.commandMap.open = 'getfile';
 								
-								// make manager location
-								if (reg.test(loc)) {
-									loc = loc.replace(reg, '$1' + name);
-								} else {
-									loc += '?getfile=' + name;
+								hideMceDlg();
+								dlg.trigger('togleminimize').one('resize close', revar);
+								fm.toast({
+									mode: 'info',
+									msg: fm.i18n('dblclickToSelect')
+								});
+
+								return false;
+							},
+							images_upload_handler : function (blobInfo, success, failure) {
+								var file = blobInfo.blob(),
+									err = function(e) {
+										var dlg = e.data.dialog || {};
+		                                if (dlg.hasClass('elfinder-dialog-error') || dlg.hasClass('elfinder-confirm-upload')) {
+		                                    hideMceDlg();
+		                                    dlg.trigger('togleminimize').one('resize close', revert);
+		                                    fm.unbind('dialogopened', err);
+		                                }
+									},
+									revert = function() {
+										dlg.off('resize close', revert);
+										showMceDlg();
+									},
+									clipdata = true;
+
+								// check file object
+								if (file.name) {
+									// file blob of client side file object
+									clipdata = void(0);
 								}
-								// launch TinyMCE
-								tinymce.activeEditor.windowManager.open({
-									file: loc,
-									title: 'elFinder',
-									width: 900,	 
-									height: 450,
-									resizable: 'yes'
-								}, {
-									oninsert: function (file, elf) {
-										var url, reg, info;
-
-										// URL normalization
-										url = elf.convAbsUrl(file.url);
-										
-										// Make file info
-										info = file.name + ' (' + elf.formatSize(file.size) + ')';
-
-										// Provide file and text for the link dialog
-										if (meta.filetype == 'file') {
-											callback(url, {text: info, title: info});
-										}
-
-										// Provide image and alt text for the image dialog
-										if (meta.filetype == 'image') {
-											callback(url, {alt: info});
-										}
-
-										// Provide alternative source and posted for the media dialog
-										if (meta.filetype == 'media') {
-											callback(url);
+								fm.bind('dialogopened', err).exec('upload', Object.assign({
+									files: [file],
+									clipdata: clipdata // to get unique name on connector
+								}, self.confObj.uploadOpts), void(0), fm.cwd().hash).done(function(data) {
+									if (data.added && data.added.length) {
+										fm.url(data.added[0].hash, { async: true }).done(function(url) {
+											showMceDlg();
+											success(fm.convAbsUrl(url));
+										}).fail(function() {
+											failure(fm.i18n('errFileNotFound'));
+										});
+									} else {
+										failure(fm.i18n(data.error? data.error : 'errUpload'));
+									}
+								}).fail(function(err) {
+									var error = fm.parseError(err);
+									if (error) {
+										if (error === 'errUnknownCmd') {
+											error = 'errPerm';
+										} else if (error === 'userabort') {
+											error = 'errAbort';
 										}
 									}
+									failure(fm.i18n(error? error : 'errUploadNoFiles'));
 								});
-								return false;
 							}
 						};
+
+						// TinyMCE 5 supports "height: 100%"
+						if (tVer >= 5) {
+							opts.height = '100%';
+						}
 
 						// trigger event 'editEditorPrepare'
 						self.trigger('Prepare', {
@@ -1306,18 +2339,15 @@
 						});
 
 						// TinyMCE configure
-						tinymce.init(opts);
+						tinymce.init(Object.assign(opts, self.confObj.mceOpts));
 					};
-				
- 				// impossible launch TineMCE in native fullscreen mode
- 				fm.getUI().hasClass('elfinder-fullscreen-native') && fm.exec('fullscreen');
 				
 				if (!self.confObj.loader) {
 					self.confObj.loader = $.Deferred();
-					$.getScript(fm.options.cdns.tinymce + '/tinymce.min.js', function() {
-						setTimeout(function() {
-							self.confObj.loader.resolve();
-						}, 0);
+					self.fm.loadScript([fm.options.cdns.tinymce + (fm.options.cdns.tinymce.match(/\.js/)? '' : '/tinymce.min.js')], function() {
+						self.confObj.loader.resolve();
+					}, {
+						loadType: 'tag'
 					});
 				}
 				self.confObj.loader.done(init);
@@ -1341,11 +2371,16 @@
 			info : {
 				id : 'zohoeditor',
 				name : 'Zoho Editor',
-				iconImg : 'img/edit_zohooffice.png',
+				iconImg : 'img/editor-icons.png 0 -32',
 				cmdCheck : 'ZohoOffice',
 				preventGet: true,
 				hideButtons: true,
-				syncInterval : 15000
+				syncInterval : 15000,
+				canMakeEmpty: true,
+				integrate: {
+					title: 'Zoho Office API',
+					link: 'https://www.zoho.com/officeapi/'
+				}
 			},
 			mimes : [
 				'application/msword',
@@ -1383,15 +2418,9 @@
 			init : function(id, file, dum, fm) {
 				var ta = this,
 					ifm = $(this).hide(),
-					spnr = $('<div/>')
-						.css({
-							position: 'absolute',
-							top: '50%',
-							textAlign: 'center',
-							width: '100%',
-							fontSize: '16pt'
-						})
-						.html(fm.i18n('nowLoading') + '<span class="elfinder-spinner"/>')
+					uiToast = fm.getUI('toast'),
+					spnr = $('<div class="elfinder-edit-spinner elfinder-edit-zohoeditor"/>')
+						.html('<span class="elfinder-spinner-text">' + fm.i18n('nowLoading') + '</span><span class="elfinder-spinner"/>')
 						.appendTo(ifm.parent()),
 					cdata = function() {
 						var data = '';
@@ -1408,7 +2437,7 @@
 						method: 'init',
 						'args[target]': file.hash,
 						'args[lang]' : fm.lang,
-						'args[cdata]' : cdata
+						'args[cdata]' : cdata()
 					},
 					preventDefault : true
 				}).done(function(data) {
@@ -1428,6 +2457,20 @@
 						});
 
 						ifm.attr('src', data.zohourl).show().css(opts.css);
+						if (data.warning) {
+							uiToast.appendTo(ta.closest('.ui-dialog'));
+							fm.toast({
+								msg: fm.i18n(data.warning),
+								mode: 'warning',
+								timeOut: 0,
+								onHidden: function() {
+									uiToast.children().length === 1 && uiToast.appendTo(fm.getUI());
+								},
+								button: {
+									text: 'btnYes'
+								}
+							});
+						}
 					} else {
 						data.error && fm.error(data.error);
 						ta.elfinderdialog('destroy');
@@ -1443,25 +2486,7 @@
 			getContent : function() {},
 			save : function() {},
 			// Before dialog close
-			beforeclose : function(base) {
-				var dfd = $.Deferred(),
-					ab = 'about:blank';
-				base.src = ab;
-				setTimeout(function() {
-					var src;
-					try {
-						src = base.contentWindow.location.href;
-					} catch(e) {
-						src = null;
-					}
-					if (src === ab) {
-						dfd.resolve();
-					} else {
-						dfd.reject();
-					}
-				}, 10);
-				return dfd;
-			},
+			beforeclose : iframeClose,
 			// On dialog closed
 			close : function(ta) {
 				var fm = this.fm,
@@ -1476,6 +2501,7 @@
 			info : {
 				id : 'ziparchive',
 				name : 'btnMount',
+				iconImg : 'img/toolbar.png 0 -416',
 				cmdCheck : 'ZipArchive',
 				edit : function(file, editor) {
 					var fm = this,
@@ -1533,8 +2559,506 @@
 					instance: void(0),
 					opts: {}
 				});
+				textarea.setSelectionRange && textarea.setSelectionRange(0, 0);
+				$(textarea).trigger('focus').show();
 			},
 			save : function(){}
+		},
+		{
+			// File converter with online-convert.com
+			info : {
+				id : 'onlineconvert',
+				name : 'Online Convert',
+				iconImg : 'img/editor-icons.png 0 -144',
+				cmdCheck : 'OnlineConvert',
+				preventGet: true,
+				hideButtons: true,
+				single: true,
+				converter: true,
+				canMakeEmpty: false,
+				integrate: {
+					title: 'ONLINE-CONVERT.COM',
+					link: 'https://online-convert.com'
+				}
+			},
+			mimes : ['*'],
+			html : '<iframe style="width:100%;max-height:100%;border:none;"></iframe>',
+			// setup on elFinder bootup
+			setup : function(opts, fm) {
+				var mOpts = opts.extraOptions.onlineConvert || {maxSize:100,showLink:true};
+				if (mOpts.maxSize) {
+					this.info.maxSize = mOpts.maxSize * 1048576;
+				}
+				this.set = Object.assign({
+					url : 'https://%s.online-convert.com%s?external_url=',
+					conv : {
+						Archive: {'7Z':{}, 'BZ2':{ext:'bz'}, 'GZ':{}, 'ZIP':{}},
+						Audio: {'MP3':{}, 'OGG':{ext:'oga'}, 'WAV':{}, 'WMA':{}, 'AAC':{}, 'AIFF':{ext:'aif'}, 'FLAC':{}, 'M4A':{}, 'MMF':{}, 'OPUS':{ext:'oga'}},
+						Document: {'DOC':{}, 'DOCX':{}, 'HTML':{}, 'ODT':{}, 'PDF':{}, 'PPT':{}, 'PPTX':{}, 'RTF':{}, 'SWF':{}, 'TXT':{}},
+						eBook: {'AZW3':{ext:'azw'}, 'ePub':{}, 'FB2':{ext:'xml'}, 'LIT':{}, 'LRF':{}, 'MOBI':{}, 'PDB':{}, 'PDF':{},'PDF-eBook':{ext:'pdf'}, 'TCR':{}},
+						Hash: {'Adler32':{},  'Apache-htpasswd':{}, 'Blowfish':{}, 'CRC32':{}, 'CRC32B':{}, 'Gost':{}, 'Haval128':{},'MD4':{}, 'MD5':{}, 'RIPEMD128':{}, 'RIPEMD160':{}, 'SHA1':{}, 'SHA256':{}, 'SHA384':{}, 'SHA512':{}, 'Snefru':{}, 'Std-DES':{}, 'Tiger128':{}, 'Tiger128-calculator':{}, 'Tiger128-converter':{}, 'Tiger160':{}, 'Tiger192':{}, 'Whirlpool':{}},
+						Image: {'BMP':{}, 'EPS':{ext:'ai'}, 'GIF':{}, 'EXR':{}, 'ICO':{}, 'JPG':{}, 'PNG':{}, 'SVG':{}, 'TGA':{}, 'TIFF':{ext:'tif'}, 'WBMP':{}, 'WebP':{}},
+						Video: {'3G2':{}, '3GP':{}, 'AVI':{}, 'FLV':{}, 'HLS':{ext:'m3u8'}, 'MKV':{}, 'MOV':{}, 'MP4':{}, 'MPEG-1':{ext:'mpeg'}, 'MPEG-2':{ext:'mpeg'}, 'OGG':{ext:'ogv'}, 'OGV':{}, 'WebM':{}, 'WMV':{}, 'Android':{link:'/convert-video-for-%s',ext:'mp4'}, 'Blackberry':{link:'/convert-video-for-%s',ext:'mp4'}, 'DPG':{link:'/convert-video-for-%s',ext:'avi'}, 'iPad':{link:'/convert-video-for-%s',ext:'mp4'}, 'iPhone':{link:'/convert-video-for-%s',ext:'mp4'}, 'iPod':{link:'/convert-video-for-%s',ext:'mp4'}, 'Nintendo-3DS':{link:'/convert-video-for-%s',ext:'avi'}, 'Nintendo-DS':{link:'/convert-video-for-%s',ext:'avi'}, 'PS3':{link:'/convert-video-for-%s',ext:'mp4'}, 'Wii':{link:'/convert-video-for-%s',ext:'avi'}, 'Xbox':{link:'/convert-video-for-%s',ext:'wmv'}}
+					},
+					catExts : {
+						Hash: 'txt'
+					},
+					link : '<div class="elfinder-edit-onlineconvert-link"><a href="https://www.online-convert.com" target="_blank"><span class="elfinder-button-icon"></span>ONLINE-CONVERT.COM</a></div>',
+					useTabs : ($.fn.tabs && !fm.UA.iOS)? true : false // Can't work on iOS, I don't know why.
+				}, mOpts);
+			},
+			// Prepare on before show dialog
+			prepare : function(base, dialogOpts, file) {
+				var elfNode = base.editor.fm.getUI();
+				$(base).height(elfNode.height());
+				dialogOpts.width = Math.max(dialogOpts.width || 0, elfNode.width() * 0.8);
+			},
+			// Initialization of editing node (this: this editors HTML node)
+			init : function(id, file, dum, fm) {
+				var ta = this,
+					confObj = ta.editor.confObj,
+					set = confObj.set,
+					uiToast = fm.getUI('toast'),
+					idxs = {},
+					allowZip = fm.uploadMimeCheck('application/zip', file.phash),
+					selfUrl = $('base').length? document.location.href.replace(/#.*$/, '') : '',
+					getExt = function(cat, con) {
+						var c;
+						if (set.catExts[cat]) {
+							return set.catExts[cat];
+						}
+						if (set.conv[cat] && (c = set.conv[cat][con])) {
+							return (c.ext || con).toLowerCase();
+						}
+						return con.toLowerCase();
+					},
+					setOptions = function(cat, done) {
+						var type, dfdInit, dfd;
+						if (typeof confObj.api === 'undefined') {
+							dfdInit = fm.request({
+								data: {
+									cmd: 'editor',
+									name: 'OnlineConvert',
+									method: 'init'
+								},
+								preventDefault : true
+							});
+						} else {
+							dfdInit = $.Deferred().resolve({api: confObj.api});
+						}
+						cat = cat.toLowerCase();
+						dfdInit.done(function(data) {
+							confObj.api = data.api;
+							if (confObj.api) {
+								if (cat) {
+									type = '?category=' + cat;
+								} else {
+									type = '';
+									cat = 'all';
+								}
+								if (!confObj.conversions) {
+									confObj.conversions = {};
+								}
+								if (!confObj.conversions[cat]) {
+									dfd = $.getJSON('https://api2.online-convert.com/conversions' + type);
+								} else {
+									dfd = $.Deferred().resolve(confObj.conversions[cat]);
+								}
+								dfd.done(function(d) {
+									confObj.conversions[cat] = d;
+									$.each(d, function(i, o) {
+										btns[set.useTabs? 'children' : 'find']('.onlineconvert-category-' + o.category).children('.onlineconvert-' + o.target).trigger('makeoption', o);
+									});
+									done && done();
+								});
+							}
+						});
+					},
+					btns = (function() {
+						var btns = $('<div/>').on('click', 'button', function() {
+								var b = $(this),
+									opts = b.data('opts') || null,
+									cat = b.closest('.onlineconvert-category').data('cname'),
+									con = b.data('conv');
+								if (confObj.api === true) {
+									api({
+										category: cat,
+										convert: con,
+										options: opts
+									});
+								} else {
+									open(cat, con);
+								}
+							}).on('change', function(e) {
+								var t = $(e.target),
+									p = t.parent(), 
+									b = t.closest('.elfinder-edit-onlineconvert-button').children('button:first'),
+									o = b.data('opts') || {},
+									v = p.data('type') === 'boolean'? t.is(':checked') : t.val();
+								e.stopPropagation();
+								if (v) {
+									if (p.data('type') === 'integer') {
+										v = parseInt(v);
+									}
+									if (p.data('pattern')) {
+										var reg = new RegExp(p.data('pattern'));
+										if (!reg.test(v)) {
+											requestAnimationFrame(function() {
+												fm.error('"' + fm.escape(v) + '" is not match to "/' + fm.escape(p.data('pattern')) + '/"');
+											});
+											v = null;
+										}
+									}
+								}
+								if (v) {
+									o[t.parent().data('optkey')] = v;
+								} else {
+									delete o[p.data('optkey')];
+								}
+								b.data('opts', o);
+							}),
+							ul = $('<ul/>'),
+							oform = function(n, o) {
+								var f = $('<p/>').data('optkey', n).data('type', o.type),
+									checked = '',
+									disabled = '',
+									nozip = false,
+									opts, btn, elm;
+								if (o.description) {
+									f.attr('title', fm.i18n(o.description));
+								}
+								if (o.pattern) {
+									f.data('pattern', o.pattern);
+								}
+								f.append($('<span/>').text(fm.i18n(n) + ' : '));
+								if (o.type === 'boolean') {
+									if (o['default'] || (nozip = (n === 'allow_multiple_outputs' && !allowZip))) {
+										checked = ' checked';
+										if (nozip) {
+											disabled = ' disabled';
+										}
+										btn = this.children('button:first');
+										opts = btn.data('opts') || {};
+										opts[n] = true;
+										btn.data('opts', opts);
+									}
+									f.append($('<input type="checkbox" value="true"'+checked+disabled+'/>'));
+								} else if (o['enum']){
+									elm = $('<select/>').append($('<option value=""/>').text('Select...'));
+									$.each(o['enum'], function(i, v) {
+										elm.append($('<option value="'+v+'"/>').text(v));
+									});
+									f.append(elm);
+								} else {
+									f.append($('<input type="text" value=""/>'));
+								}
+								return f;
+							},
+							makeOption = function(o) {
+								var elm = this,
+									b = $('<span class="elfinder-button-icon elfinder-button-icon-preference"/>').on('click', function() {
+										f.toggle();
+									}),
+									f = $('<div class="elfinder-edit-onlinconvert-options"/>').hide();
+								if (o.options) {
+									$.each(o.options, function(k, v) {
+										k !== 'download_password' && f.append(oform.call(elm, k, v));
+									});
+								}
+								elm.append(b, f);
+							},
+							ts = (+new Date()),
+							i = 0;
+						
+						if (!confObj.ext2mime) {
+							confObj.ext2mime = fm.arrayFlip(fm.mimeTypes);
+						}
+						$.each(set.conv, function(t, c) {
+							var cname = t.toLowerCase(),
+								id = 'elfinder-edit-onlineconvert-' + cname + ts,
+								type = $('<div id="' + id + '" class="onlineconvert-category onlineconvert-category-'+cname+'"/>').data('cname', t),
+								cext;
+							$.each(c, function(n, o) {
+								var nl = n.toLowerCase(),
+									ext = getExt(t, n);
+								if (!confObj.ext2mime[ext]) {
+									if (cname === 'audio' || cname === 'image' || cname === 'video') {
+										confObj.ext2mime[ext] = cname + '/x-' + nl;
+									} else {
+										confObj.ext2mime[ext] = 'application/octet-stream';
+									}
+								}
+								if (fm.uploadMimeCheck(confObj.ext2mime[ext], file.phash)) {
+									type.append($('<div class="elfinder-edit-onlineconvert-button onlineconvert-'+nl+'"/>').on('makeoption', function(e, data) {
+										var elm = $(this);
+										if (!elm.children('.elfinder-button-icon-preference').length) {
+											makeOption.call(elm, data);
+										}
+									}).append($('<button/>').text(n).data('conv', n)));
+								}
+							});
+							if (type.children().length) {
+								ul.append($('<li/>').append($('<a/>').attr('href', selfUrl + '#' + id).text(t)));
+								btns.append(type);
+								idxs[cname] = i++;
+							}
+						});
+						if (set.useTabs) {
+							btns.prepend(ul).tabs({
+								beforeActivate: function(e, ui) {
+									setOptions(ui.newPanel.data('cname'));
+								}
+							});
+						} else {
+							$.each(set.conv, function(t) {
+								var tl = t.toLowerCase();
+								btns.append($('<fieldset class="onlineconvert-fieldset-' + tl + '"/>').append($('<legend/>').text(t)).append(btns.children('.onlineconvert-category-' + tl)));
+							});
+						}
+						return btns;
+					})(),
+					ifm = $(this).hide(),
+					select = $('<div/>')
+						.append(
+							btns,
+							$('<div class="elfinder-edit-onlineconvert-bottom-btn"/>').append(
+								$('<button/>')
+									.addClass(fm.UA.iOS? 'elfinder-button-ios-multiline' : '')
+									.html(fm.i18n('convertOn', 'Online-Convert.com'))
+									.on('click', function() {
+										open();
+									})
+							),
+							(set.showLink? $(set.link) : null)
+						)
+						.appendTo(ifm.parent().css({overflow: 'auto'})),
+					spnr = $('<div class="elfinder-edit-spinner elfinder-edit-onlineconvert"/>')
+						.hide()
+						.html('<span class="elfinder-spinner-text">' + fm.i18n('nowLoading') + '</span><span class="elfinder-spinner"/>')
+						.appendTo(ifm.parent()),
+					_url = null,
+					url = function() {
+						var onetime;
+						if (_url) {
+							return $.Deferred().resolve(_url);
+						} else {
+							spnr.show();
+							return fm.forExternalUrl(file.hash).done(function(url) {
+								_url = url;
+							}).fail(function(error) {
+								error && fm.error(error);
+								ta.elfinderdialog('destroy');
+							}).always(function() {
+								spnr.hide();
+							});
+						}
+					},
+					api = function(opts) {
+						$(ta).data('dfrd', url().done(function(url) {
+							select.fadeOut();
+							setStatus({info: 'Start conversion request.'});
+							fm.request({
+								data: {
+									cmd: 'editor',
+									name: 'OnlineConvert',
+									method: 'api',
+									'args[category]' : opts.category.toLowerCase(),
+									'args[convert]'  : opts.convert.toLowerCase(),
+									'args[options]'  : JSON.stringify(opts.options),
+									'args[source]'   : fm.convAbsUrl(url),
+									'args[filename]' : fm.splitFileExtention(file.name)[0] + '.' + getExt(opts.category, opts.convert),
+									'args[mime]'     : file.mime
+								},
+								preventDefault : true
+							}).done(function(data) {
+								checkRes(data.apires, opts.category, opts.convert);
+							}).fail(function(error) {
+								error && fm.error(error);
+								ta.elfinderdialog('destroy');
+							});
+						}));
+					},
+					checkRes = function(res, cat, con) {
+						var status, err = [];
+						if (res && res.id) {
+							status = res.status;
+							if (status.code === 'failed') {
+								spnr.hide();
+								if (res.errors && res.errors.length) {
+									$.each(res.errors, function(i, o) {
+										o.message && err.push(o.message);
+									});
+								}
+								fm.error(err.length? err : status.info);
+								select.fadeIn();
+							} else if (status.code === 'completed') {
+								upload(res);
+							} else {
+								setStatus(status);
+								setTimeout(function() {
+									polling(res.id);
+								}, 1000);
+							}
+						} else {
+							uiToast.appendTo(ta.closest('.ui-dialog'));
+							if (res.message) {
+								fm.toast({
+									msg: fm.i18n(res.message),
+									mode: 'error',
+									timeOut: 5000,
+									onHidden: function() {
+										uiToast.children().length === 1 && uiToast.appendTo(fm.getUI());
+									}
+								});
+							}
+							fm.toast({
+								msg: fm.i18n('editorConvNoApi'),
+								mode: 'warning',
+								timeOut: 3000,
+								onHidden: function() {
+									uiToast.children().length === 1 && uiToast.appendTo(fm.getUI());
+									open(cat, con);
+								}
+							});
+						}
+					},
+					setStatus = function(status) {
+						spnr.show().children('.elfinder-spinner-text').text(status.info);
+					},
+					polling = function(jobid) {
+						fm.request({
+							data: {
+								cmd: 'editor',
+								name: 'OnlineConvert',
+								method: 'api',
+								'args[jobid]': jobid
+							},
+							preventDefault : true
+						}).done(function(data) {
+							checkRes(data.apires);
+						}).fail(function(error) {
+							error && fm.error(error);
+							ta.elfinderdialog('destroy');
+						});
+					},
+					upload = function(res) {
+						var output = res.output,
+							id = res.id,
+							url = '';
+						spnr.hide();
+						if (output && output.length) {
+							ta.elfinderdialog('destroy');
+							$.each(output, function(i, o) {
+								if (o.uri) {
+									url += o.uri + '\n';
+								}
+							});
+							fm.upload({
+								target: file.phash,
+								files: [url],
+								type: 'text',
+								extraData: {
+									contentSaveId: 'OnlineConvert-' + res.id
+								}
+							});
+						}
+					},
+					open = function(cat, con) {
+						var link;
+						if (cat && con) {
+							if (set.conv[cat] && set.conv[cat][con] && set.conv[cat][con].link) {
+								link = set.conv[cat][con].link.replace('%s', con);
+							} else {
+								link = cat === 'hash'? ('/' + con + '-generator') : ('/convert-to-' + con);
+							}
+							link = set.url.replace('%s', cat).replace('%s', link);
+						} else {
+							link = set.url.replace('%s', mode + '-conversion').replace('%s', '');
+						}
+						spnr.hide();
+						select.hide();
+						ifm.parent().css({overflow: fm.UA.iOS? 'auto' : 'hidden'});
+						$(ta).data('dfrd', url().done(function(url) {
+							var opts;
+							if (url) {
+								opts = {
+									css: {
+										height: '100%'
+									}
+								};
+								// trigger event 'editEditorPrepare'
+								ta.editor.trigger('Prepare', {
+									node: ta,
+									editorObj: void(0),
+									instance: ifm,
+									opts: opts
+								});
+								url = link + encodeURIComponent(fm.convAbsUrl(url));
+								ifm.attr('src', url).show().css(opts.css)
+									.one('load', function() {
+										uiToast.appendTo(ta.closest('.ui-dialog'));
+										fm.toast({
+											msg: fm.i18n('editorConvNeedUpload'),
+											mode: 'info',
+											timeOut: 15000,
+											onHidden: function() {
+												uiToast.children().length === 1 && uiToast.appendTo(fm.getUI());
+											},
+											button: {
+												text: 'btnYes'
+											}
+										});
+									});
+							} else {
+								data.error && fm.error(data.error);
+								ta.elfinderdialog('destroy');
+							}
+						}));
+					},
+					mode = 'document',
+					cl, m;
+				ifm.parent().addClass('overflow-scrolling-touch');
+				if (m = file.mime.match(/^(audio|image|video)/)) {
+					mode = m[1];
+				}
+				if (set.useTabs) {
+					if (idxs[mode]) {
+						btns.tabs('option', 'active', idxs[mode]);
+					}
+				} else {
+					cl = Object.keys(set.conv).length;
+					$.each(set.conv, function(t) {
+						if (t.toLowerCase() === mode) {
+							setOptions(t, function() {
+								$.each(set.conv, function(t0) {
+									t0.toLowerCase() !== mode && setOptions(t0);
+								});
+							});
+							return false;
+						}
+						cl--;
+					});
+					if (!cl) {
+						$.each(set.conv, function(t) {
+							setOptions(t);
+						});
+					}
+					ifm.parent().scrollTop(btns.children('.onlineconvert-fieldset-' + mode).offset().top);
+				}
+			},
+			load : function() {},
+			getContent : function() {},
+			save : function() {},
+			// Before dialog close
+			beforeclose : iframeClose,
+			// On dialog closed
+			close : function(ta) {
+				var fm = this.fm,
+					dfrd = $(ta).data('dfrd');
+				if (dfrd && dfrd.state() === 'pending') {
+					dfrd.reject();
+				}
+			}
 		}
 	];
 }, window.elFinder));

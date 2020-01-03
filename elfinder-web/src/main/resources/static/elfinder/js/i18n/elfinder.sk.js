@@ -2,7 +2,7 @@
  * Slovak translation
  * @author RobiNN <kelcakrobo@gmail.com>
  * @author Jakub Ďuraš <jkblmr@gmail.com>
- * @version 2018-03-28
+ * @version 2019-08-09
  */
 (function(root, factory) {
 	if (typeof define === 'function' && define.amd) {
@@ -17,9 +17,9 @@
 		translator : 'RobiNN &lt;kelcakrobo@gmail.com&gt;, Jakub Ďuraš &lt;jkblmr@gmail.com&gt;',
 		language   : 'Slovenčina',
 		direction  : 'ltr',
-		dateFormat : 'd.m.Y H:i', // Mar 13, 2012 05:27 PM
-		fancyDateFormat : '$1 H:i', // will produce smth like: Today 12:25 PM
-		nonameDateFormat : 'ymd-His', // to apply if upload file is noname: 120513172700
+		dateFormat : 'd.m.Y H:i', // will show like: 09.08.2019 14:11
+		fancyDateFormat : '$1 H:i', // will show like: Dnes 14:11
+		nonameDateFormat : 'ymd-His', // noname upload will show like: 190809-141149
 		messages   : {
 
 			/********************************** errors **********************************/
@@ -115,6 +115,7 @@
 			'errEditorNotFound'    : 'Editor tohto typu súboru nebol nájdený.', // from v2.1.25 added 23.5.2017
 			'errServerError'       : 'Vyskytla sa chyba na strane servera.', // from v2.1.25 added 16.6.2017
 			'errEmpty'             : 'Nepodarilo sa vyprázdniť priečinok "$1".', // from v2.1.25 added 22.6.2017
+			'moreErrors'           : 'Existujú ešte ďalšie $1 chyby.', // from v2.1.44 added 9.12.2018
 
 			/******************************* commands names ********************************/
 			'cmdarchive'   : 'Vytvoriť archív',
@@ -132,7 +133,7 @@
 			'cmdinfo'      : 'Info',
 			'cmdmkdir'     : 'Nový priečinok',
 			'cmdmkdirin'   : 'Do novej zložky', // from v2.1.7 added 19.2.2016
-			'cmdmkfile'    : 'Nový textový súbor',
+			'cmdmkfile'    : 'Nový súbor',
 			'cmdopen'      : 'Otvoriť',
 			'cmdpaste'     : 'Vložiť',
 			'cmdquicklook' : 'Náhľad',
@@ -162,6 +163,8 @@
 			'cmdselectall' : 'Vybrať všetko', // from v2.1.28 added 15.08.2017
 			'cmdselectnone': 'Nič nevyberať', // from v2.1.28 added 15.08.2017
 			'cmdselectinvert': 'Invertovať výber', // from v2.1.28 added 15.08.2017
+			'cmdopennew'   : 'Otvoriť v novom okne', // from v2.1.38 added 3.4.2018
+			'cmdhide'      : 'Skryť (Predvoľba)', // from v2.1.41 added 24.7.2018
 
 			/*********************************** buttons ***********************************/
 			'btnClose'  : 'Zavrieť',
@@ -223,6 +226,7 @@
 			'ntfchkdir'   : 'Kontrola cieľového priečinka', // from v2.1.24 added 3.5.2017
 			'ntfundo'     : 'Zrušiť predchádzajúcu operáciu', // from v2.1.27 added 31.07.2017
 			'ntfredo'     : 'Obnovenie predchádzajúceho zrušenia', // from v2.1.27 added 31.07.2017
+			'ntfchkcontent' : 'Kontrola obsahu', // from v2.1.41 added 3.8.2018
 
 			/*********************************** volumes *********************************/
 			'volume_Trash' : 'Kôš', //from v2.1.24 added 29.4.2017
@@ -283,9 +287,12 @@
 			'sortAlsoTreeview'  : 'Tiež stromové zobrazenie',  // from v2.1.15 added 01.08.2016
 
 			/********************************** new items **********************************/
-			'untitled file.txt' : 'Nový textový dokument.txt', // added 10.11.2015
+			'untitled file.txt' : 'Nový súbor.txt', // added 10.11.2015
 			'untitled folder'   : 'Nový priečinok',   // added 10.11.2015
 			'Archive'           : 'Nový archív',  // from v2.1 added 10.11.2015
+			'untitled file'     : 'Nový súbor.$1',  // from v2.1.41 added 6.8.2018
+			'extentionfile'     : '$1 súbor',    // from v2.1.41 added 6.8.2018
+			'extentiontype'     : '$1: $2',      // from v2.1.43 added 17.10.2018
 
 			/********************************** messages **********************************/
 			'confirmReq'      : 'Potrebné potvrdenie',
@@ -296,6 +303,7 @@
 			'confirmNonUTF8'  : 'Kódovanie tohto súboru nemohlo byť detekované. Pre úpravu dočasne potrebujete previesť na UTF-8 .<br/>Prosím, vyberte kódovanie znakov tohto súboru.', // from v2.1.19 added 28.11.2016
 			'confirmNotSave'  : 'Bol upravený.<br/>Ak zmeny neuložíte, stratíte vykonanú prácu.', // from v2.1 added 15.7.2015
 			'confirmTrash'    : 'Naozaj chcete presunúť položky do koša?', //from v2.1.24 added 29.4.2017
+			'confirmMove'     : 'Naozaj chcete presunúť položky do "$1"?', //from v2.1.50 added 27.7.2019
 			'apllyAll'        : 'Použiť na všetky',
 			'name'            : 'Názov',
 			'size'            : 'Veľkosť',
@@ -313,6 +321,10 @@
 			'selectlfile'     : 'Vybrať poslednú položku',
 			'viewlist'        : 'Zoznam',
 			'viewicons'       : 'Ikony',
+			'viewSmall'       : 'Malé ikony', // from v2.1.39 added 22.5.2018
+			'viewMedium'      : 'Stredné ikony', // from v2.1.39 added 22.5.2018
+			'viewLarge'       : 'Veľké ikony', // from v2.1.39 added 22.5.2018
+			'viewExtraLarge'  : 'Extra veľké ikony', // from v2.1.39 added 22.5.2018
 			'places'          : 'Miesta',
 			'calc'            : 'Prepočítavanie',
 			'path'            : 'Cesta',
@@ -339,11 +351,11 @@
 			'twitter'         : 'Nasleduj nás na Twitteri',
 			'facebook'        : 'Pripoj sa k nám na Facebooku',
 			'team'            : 'Tím',
-			'chiefdev'        : 'hlavný vývojár',
-			'developer'       : 'vývojár',
-			'contributor'     : 'prispievateľ',
-			'maintainer'      : 'správca',
-			'translator'      : 'prekladateľ',
+			'chiefdev'        : 'Hlavný vývojár',
+			'developer'       : 'Vývojár',
+			'contributor'     : 'Prispievateľ',
+			'maintainer'      : 'Správca',
+			'translator'      : 'Prekladateľ',
 			'icons'           : 'Ikony',
 			'dontforget'      : 'a nezabudnite si plavky',
 			'shortcutsof'     : 'Skratky nie sú povolené',
@@ -451,6 +463,34 @@
 			'selectionInfo'   : 'Informácie o výbere', // from v2.1.33 added 7.3.2018
 			'hashChecker'     : 'Algoritmy na zobrazenie hashu súborov', // from v2.1.33 added 10.3.2018
 			'infoItems'       : 'Informačné položky (panel s informáciami o výbere)', // from v2.1.38 added 28.3.2018
+			'pressAgainToExit': 'Opätovným stlačením opustíte.', // from v2.1.38 added 1.4.2018
+			'toolbar'         : 'Panel nástrojov', // from v2.1.38 added 4.4.2018
+			'workspace'       : 'Pracovný priestor', // from v2.1.38 added 4.4.2018
+			'dialog'          : 'Dialóg', // from v2.1.38 added 4.4.2018
+			'all'             : 'Všetko', // from v2.1.38 added 4.4.2018
+			'iconSize'        : 'Veľkosť ikony (zobrazenie ikon)', // from v2.1.39 added 7.5.2018
+			'editorMaximized' : 'Otvorte maximalizované okno editora', // from v2.1.40 added 30.6.2018
+			'editorConvNoApi' : 'Pretože konverzia podľa rozhrania API momentálne nie je k dispozícii, skonvertujte na webovej stránke.', //from v2.1.40 added 8.7.2018
+			'editorConvNeedUpload' : 'Po konverzii musíte nahrať skonvertovaný súbor pomocou URL položky alebo stiahnutý súbor na uloženie skonvertovaného súboru.', //from v2.1.40 added 8.7.2018
+			'convertOn'       : 'Konvertovať na stránke $1', // from v2.1.40 added 10.7.2018
+			'integrations'    : 'Integrácie', // from v2.1.40 added 11.7.2018
+			'integrationWith' : 'Tento elFinder má integrované nasledujúce externé služby. Pred použitím skontrolujte podmienky používania, zásady ochrany osobných údajov atď.', // from v2.1.40 added 11.7.2018
+			'showHidden'      : 'Zobraziť skryté položky', // from v2.1.41 added 24.7.2018
+			'hideHidden'      : 'Skryť skryté položky', // from v2.1.41 added 24.7.2018
+			'toggleHidden'    : 'Zobraziť/skryť skryté položky', // from v2.1.41 added 24.7.2018
+			'makefileTypes'   : 'Typy súborov, ktoré sa majú povoliť pomocou "Nový súbor"', // from v2.1.41 added 7.8.2018
+			'typeOfTextfile'  : 'Typ textového súboru', // from v2.1.41 added 7.8.2018
+			'add'             : 'Pridať', // from v2.1.41 added 7.8.2018
+			'theme'           : 'Téma', // from v2.1.43 added 19.10.2018
+			'default'         : 'Predvolená', // from v2.1.43 added 19.10.2018
+			'description'     : 'Popis', // from v2.1.43 added 19.10.2018
+			'website'         : 'Stránka', // from v2.1.43 added 19.10.2018
+			'author'          : 'Autor', // from v2.1.43 added 19.10.2018
+			'email'           : 'E-mail', // from v2.1.43 added 19.10.2018
+			'license'         : 'Licencia', // from v2.1.43 added 19.10.2018
+			'exportToSave'    : 'Túto položku nemožno uložiť. Ak chcete zabrániť strate úprav, musíte ju exportovať do počítača.', // from v2.1.44 added 1.12.2018
+			'dblclickToSelect': 'Dvakrát kliknite na súbor a vyberte ho.', // from v2.1.47 added 22.1.2019
+			'useFullscreen'   : 'Použiť režim celej obrazovky', // from v2.1.47 added 19.2.2019
 
 			/********************************** mimetypes **********************************/
 			'kindUnknown'     : 'Neznámy',
