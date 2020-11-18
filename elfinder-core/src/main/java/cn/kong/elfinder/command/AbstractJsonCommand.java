@@ -5,18 +5,18 @@
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the Trustsystems Desenvolvimento de Sistemas, LTDA. nor the names of its contributors
  *    may be used to endorse or promote products derived from this software without
  *    specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -34,6 +34,7 @@ package cn.kong.elfinder.command;
 import cn.kong.elfinder.ElFinderConstants;
 import cn.kong.elfinder.service.ElfinderStorage;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -64,17 +65,14 @@ public abstract class AbstractJsonCommand extends AbstractCommand {
         try {
             execute(elfinderStorage, request, json);
             response.setContentType(APPLICATION_JSON_CHARSET_UTF_8);
-            writer.write(json.toJSONString());
-//            json.write(writer);
+            writer.write(json.toJSONString(json, SerializerFeature.DisableCircularReferenceDetect));
             writer.flush();
         } catch (Exception e) {
             logger.error("Unable to execute abstract json command", e);
             json.put(ElFinderConstants.ELFINDER_JSON_RESPONSE_ERROR, e.getMessage());
-            writer.write(json.toJSONString());
-//            json.write(writer);
+            writer.write(json.toJSONString(json, SerializerFeature.DisableCircularReferenceDetect));
             writer.flush();
-        }
-        finally {
+        } finally {
             writer.close();
         }
     }

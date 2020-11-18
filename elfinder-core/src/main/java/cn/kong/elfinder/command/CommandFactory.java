@@ -5,18 +5,18 @@
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the Trustsystems Desenvolvimento de Sistemas, LTDA. nor the names of its contributors
  *    may be used to endorse or promote products derived from this software without
  *    specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -35,7 +35,6 @@ import cn.kong.elfinder.support.concurrency.GenericCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
 public class CommandFactory implements ElfinderCommandFactory {
@@ -56,13 +55,10 @@ public class CommandFactory implements ElfinderCommandFactory {
         ElfinderCommand command = null;
 
         try {
-            command = cache.getValue(commandName, new Callable<ElfinderCommand>() {
-                @Override
-                public ElfinderCommand call() throws Exception {
-                    logger.debug(String.format("trying recovery command!: %s", commandName));
-                    String className = String.format(getClassNamePattern(), commandName.substring(0, 1).toUpperCase() + commandName.substring(1));
-                    return (ElfinderCommand) Class.forName(className).newInstance();
-                }
+            command = cache.getValue(commandName, () -> {
+                logger.debug(String.format("trying recovery command!: %s", commandName));
+                String className = String.format(getClassNamePattern(), commandName.substring(0, 1).toUpperCase() + commandName.substring(1));
+                return (ElfinderCommand) Class.forName(className).newInstance();
             });
             logger.debug(String.format("command found!: %s", commandName));
         } catch (InterruptedException | ExecutionException e) {

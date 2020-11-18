@@ -5,18 +5,18 @@
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the Trustsystems Desenvolvimento de Sistemas, LTDA. nor the names of its contributors
  *    may be used to endorse or promote products derived from this software without
  *    specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -45,7 +45,6 @@ import java.util.Objects;
 
 public class OpenCommand extends AbstractJsonCommand implements ElfinderCommand {
 
-
     @Override
     public void execute(ElfinderStorage elfinderStorage, HttpServletRequest request, JSONObject json)
             throws Exception {
@@ -53,7 +52,8 @@ public class OpenCommand extends AbstractJsonCommand implements ElfinderCommand 
         boolean init = request.getParameter(ElFinderConstants.ELFINDER_PARAMETER_INIT) != null;
         boolean tree = request.getParameter(ElFinderConstants.ELFINDER_PARAMETER_TREE) != null;
         String target = request.getParameter(ElFinderConstants.ELFINDER_PARAMETER_TARGET);
-
+        json.put(ElFinderConstants.ELFINDER_JSON_RESPONSE_UPLMAXFILE, ElFinderConstants.ELFINDER_UPLMAXFILE);
+        json.put(ElFinderConstants.ELFINDER_JSON_RESPONSE_UPLMAXSIZE, ElFinderConstants.ELFINDER_UPLMAXSIZE);
         Map<String, VolumeHandler> files = new LinkedHashMap<>();
         if (init) {
             json.put(ElFinderConstants.ELFINDER_PARAMETER_API, ElFinderConstants.ELFINDER_VERSION_API);
@@ -76,11 +76,11 @@ public class OpenCommand extends AbstractJsonCommand implements ElfinderCommand 
         Object[] objects = buildJsonFilesArray(request, files.values());
         json.put(ElFinderConstants.ELFINDER_PARAMETER_FILES, objects);
         String hash = cwd.getHash();
-        for(Object obj : objects){
-            HashMap<String,Object> map = (HashMap<String, Object>) obj;
+        for (Object obj : objects) {
+            HashMap<String, Object> map = (HashMap<String, Object>) obj;
             String strHash = map.get("hash").toString();
-            if(Objects.equals(hash, strHash)){
-                json.put(ElFinderConstants.ELFINDER_PARAMETER_CWD,map);
+            if (Objects.equals(hash, strHash)) {
+                json.put(ElFinderConstants.ELFINDER_PARAMETER_CWD, map);
                 break;
             }
         }
