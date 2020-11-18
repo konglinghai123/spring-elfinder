@@ -9,8 +9,8 @@ public class EditorCommand extends AbstractJsonCommand implements ElfinderComman
 
     @Override
     protected void execute(ElfinderStorage elfinderStorage, HttpServletRequest request, JSONObject json) throws Exception {
-        json.put("OnlineConvert", true);
-        json.put("ZipArchive", true);
-        json.put("ZohoOffice", true);
+        json.put("OnlineConvert", false);
+        json.put("ZipArchive", false);
+        json.put("ZohoOffice", false);
     }
 }
