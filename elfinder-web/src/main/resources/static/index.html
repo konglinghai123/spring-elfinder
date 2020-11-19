@@ -1,228 +1,190 @@
+<!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+    <title>elFinder 2.1.x source version with PHP connector</title>
 
-    <!-- elFinder CSS (REQUIRED) -->
-    <link rel="stylesheet" type="text/css" href="./elfinder/css/theme.css">
+    <!-- Section CSS -->
+    <!-- jQuery UI (REQUIRED) -->
+    <link rel="stylesheet" href="./elfinder/jquery/jquery-ui-1.12.0.css" type="text/css">
 
-    <script src="./elfinder/js/jquery-1.11.1.js"></script>
+    <!-- elfinder css -->
+    <link rel="stylesheet" href="./elfinder/css/commands.css"    type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/common.css"      type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/contextmenu.css" type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/cwd.css"         type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/dialog.css"      type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/fonts.css"       type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/navbar.css"      type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/places.css"      type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/quicklook.css"   type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/statusbar.css"   type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/theme.css"       type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/toast.css"       type="text/css">
+    <link rel="stylesheet" href="./elfinder/css/toolbar.css"     type="text/css">
 
-    <!-- elFinder JS (REQUIRED) -->
-    <script src="./elfinder/js/elfinder.full.js"></script>
+    <!-- Section JavaScript -->
+    <!-- jQuery and jQuery UI (REQUIRED) -->
+    <script src="./elfinder/jquery/jquery-1.12.4.js" type="text/javascript" charset="utf-8"></script>
+    <script src="./elfinder/jquery/jquery-ui-1.12.0.js" type="text/javascript" charset="utf-8"></script>
 
-    <!-- elFinder translation (OPTIONAL) -->
-    <script src="./elfinder/js/i18n/elfinder.zh_CN.js"></script>
+    <!-- elfinder core -->
+    <script src="./elfinder/js/elFinder.js"></script>
+    <script src="./elfinder/js/elFinder.version.js"></script>
+    <script src="./elfinder/js/jquery.elfinder.js"></script>
+    <script src="./elfinder/js/elFinder.mimetypes.js"></script>
+    <script src="./elfinder/js/elFinder.options.js"></script>
+    <script src="./elfinder/js/elFinder.options.netmount.js"></script>
+    <script src="./elfinder/js/elFinder.history.js"></script>
+    <script src="./elfinder/js/elFinder.command.js"></script>
+    <script src="./elfinder/js/elFinder.resources.js"></script>
 
+    <!-- elfinder dialog -->
+    <script src="./elfinder/js/jquery.dialogelfinder.js"></script>
+
+    <!-- elfinder default lang -->
+    <script src="./elfinder/js/i18n/elfinder.en.js"></script>
+
+    <!-- elfinder ui -->
+    <script src="./elfinder/js/ui/button.js"></script>
+    <script src="./elfinder/js/ui/contextmenu.js"></script>
+    <script src="./elfinder/js/ui/cwd.js"></script>
+    <script src="./elfinder/js/ui/dialog.js"></script>
+    <script src="./elfinder/js/ui/fullscreenbutton.js"></script>
+    <script src="./elfinder/js/ui/navbar.js"></script>
+    <script src="./elfinder/js/ui/navdock.js"></script>
+    <script src="./elfinder/js/ui/overlay.js"></script>
+    <script src="./elfinder/js/ui/panel.js"></script>
+    <script src="./elfinder/js/ui/path.js"></script>
+    <script src="./elfinder/js/ui/places.js"></script>
+    <script src="./elfinder/js/ui/searchbutton.js"></script>
+    <script src="./elfinder/js/ui/sortbutton.js"></script>
+    <script src="./elfinder/js/ui/stat.js"></script>
+    <script src="./elfinder/js/ui/toast.js"></script>
+    <script src="./elfinder/js/ui/toolbar.js"></script>
+    <script src="./elfinder/js/ui/tree.js"></script>
+    <script src="./elfinder/js/ui/uploadButton.js"></script>
+    <script src="./elfinder/js/ui/viewbutton.js"></script>
+    <script src="./elfinder/js/ui/workzone.js"></script>
+
+    <!-- elfinder commands -->
+    <script src="./elfinder/js/commands/archive.js"></script>
+    <script src="./elfinder/js/commands/back.js"></script>
+    <script src="./elfinder/js/commands/chmod.js"></script>
+    <script src="./elfinder/js/commands/colwidth.js"></script>
+    <script src="./elfinder/js/commands/copy.js"></script>
+    <script src="./elfinder/js/commands/cut.js"></script>
+    <script src="./elfinder/js/commands/download.js"></script>
+    <script src="./elfinder/js/commands/duplicate.js"></script>
+    <script src="./elfinder/js/commands/edit.js"></script>
+    <script src="./elfinder/js/commands/empty.js"></script>
+    <script src="./elfinder/js/commands/extract.js"></script>
+    <script src="./elfinder/js/commands/forward.js"></script>
+    <script src="./elfinder/js/commands/fullscreen.js"></script>
+    <script src="./elfinder/js/commands/getfile.js"></script>
+    <script src="./elfinder/js/commands/help.js"></script>
+    <script src="./elfinder/js/commands/hidden.js"></script>
+    <script src="./elfinder/js/commands/hide.js"></script>
+    <script src="./elfinder/js/commands/home.js"></script>
+    <script src="./elfinder/js/commands/info.js"></script>
+    <script src="./elfinder/js/commands/mkdir.js"></script>
+    <script src="./elfinder/js/commands/mkfile.js"></script>
+    <script src="./elfinder/js/commands/netmount.js"></script>
+    <script src="./elfinder/js/commands/open.js"></script>
+    <script src="./elfinder/js/commands/opendir.js"></script>
+    <script src="./elfinder/js/commands/opennew.js"></script>
+    <script src="./elfinder/js/commands/paste.js"></script>
+    <script src="./elfinder/js/commands/places.js"></script>
+    <script src="./elfinder/js/commands/preference.js"></script>
+    <script src="./elfinder/js/commands/quicklook.js"></script>
+    <script src="./elfinder/js/commands/quicklook.plugins.js"></script>
+    <script src="./elfinder/js/commands/reload.js"></script>
+    <script src="./elfinder/js/commands/rename.js"></script>
+    <script src="./elfinder/js/commands/resize.js"></script>
+    <script src="./elfinder/js/commands/restore.js"></script>
+    <script src="./elfinder/js/commands/rm.js"></script>
+    <script src="./elfinder/js/commands/search.js"></script>
+    <script src="./elfinder/js/commands/selectall.js"></script>
+    <script src="./elfinder/js/commands/selectinvert.js"></script>
+    <script src="./elfinder/js/commands/selectnone.js"></script>
+    <script src="./elfinder/js/commands/sort.js"></script>
+    <script src="./elfinder/js/commands/undo.js"></script>
+    <script src="./elfinder/js/commands/up.js"></script>
+    <script src="./elfinder/js/commands/upload.js"></script>
+    <script src="./elfinder/js/commands/view.js"></script>
+
+    <!-- elfinder 1.x connector API support (OPTIONAL) -->
+    <script src="./elfinder/js/proxy/elFinderSupportVer1.js"></script>
+
+    <!-- Extra contents editors (OPTIONAL) -->
+    <script src="./elfinder/js/extras/editors.default.js"></script>
+
+    <!-- GoogleDocs Quicklook plugin for GoogleDrive Volume (OPTIONAL) -->
     <script src="./elfinder/js/extras/quicklook.googledocs.js"></script>
 
-    <script src="./elfinder/ace/ace.js" type="text/javascript" charset="utf-8"></script>
+    <!-- elfinder initialization  -->
+    <script>
+        $(function() {
+            $('#elfinder').elfinder(
+                // 1st Arg - options
+                {
+                    // Disable CSS auto loading
+                    cssAutoLoad : false,
 
-    <script src="./elfinder/ace/ext-modelist.js" type="text/javascript" charset="utf-8"></script>
+                    // Base URL to css/*, js/*
+                    baseUrl : './elfinder/',
 
-    <script src="./elfinder/ace/ext-settings_menu.js"></script>
+                    // Connector URL
+                    url : '/elfinder/connector',
+                    notifyDelay : 1000,
 
-    <script src="./elfinder/jquery-ui-1.12.1.custom/jquery-ui.js"></script>
+                    // Callback when a file is double-clicked
+                    getFileCallback : function(file) {
+                        // ...
+                    },
+                },
 
-    <script type="text/javascript" charset="utf-8">
-        $(document).ready(function() {
-            elFinder.prototype.loadCss('./elfinder/jquery-ui-1.12.1.custom/jquery-ui.css');
-            $('#elfinder').elfinder({
-                url : '/elfinder/connector',
-                lang: 'zh_CN',
-                height : window.innerHeight-20,
-                commandsOptions: {
-                    edit: {
-                        editors : [
-                            {
-                                info:{
-                                    name:'编辑',
-                                    urlAsContent: false
-                                },
-                                // ACE Editor
-                                // `mimes` is not set for support everything kind of text file
-                                load : function(textarea) {
-                                    var self = this,
-                                        dfrd = $.Deferred(),
-                                        cdn  = './elfinder/ace/',
-                                        init = function() {
-                                            if (typeof ace === 'undefined') {
-                                                console.log(cdn);
-                                                this.fm.loadScript([
-                                                    cdn+'/ace.js',
-                                                    cdn+'/ext-modelist.js',
-                                                    cdn+'/ext-settings_menu.js',
-                                                    cdn+'/ext-language_tools.js'
-                                                ], start);
-                                            } else {
-                                                start();
-                                            }
-                                        },
-                                        start = function() {
-                                            var editor, editorBase, mode,
-                                                ta = $(textarea),
-                                                taBase = ta.parent(),
-                                                dialog = taBase.parent(),
-                                                id = textarea.id + '_ace',
-                                                ext = self.file.name.replace(/^.+\.([^.]+)|(.+)$/, '$1$2').toLowerCase(),
-                                                // MIME/mode map
-                                                mimeMode = {
-                                                    'text/x-php'              : 'php',
-                                                    'application/x-php'       : 'php',
-                                                    'text/html'               : 'html',
-                                                    'application/xhtml+xml'   : 'html',
-                                                    'text/javascript'         : 'javascript',
-                                                    'application/javascript'  : 'javascript',
-                                                    'text/css'                : 'css',
-                                                    'text/x-c'                : 'c_cpp',
-                                                    'text/x-csrc'             : 'c_cpp',
-                                                    'text/x-chdr'             : 'c_cpp',
-                                                    'text/x-c++'              : 'c_cpp',
-                                                    'text/x-c++src'           : 'c_cpp',
-                                                    'text/x-c++hdr'           : 'c_cpp',
-                                                    'text/x-shellscript'      : 'sh',
-                                                    'application/x-csh'       : 'sh',
-                                                    'text/x-python'           : 'python',
-                                                    'text/x-java'             : 'java',
-                                                    'text/x-java-source'      : 'java',
-                                                    'text/x-ruby'             : 'ruby',
-                                                    'text/x-perl'             : 'perl',
-                                                    'application/x-perl'      : 'perl',
-                                                    'text/x-sql'              : 'sql',
-                                                    'text/xml'                : 'xml',
-                                                    'application/docbook+xml' : 'xml',
-                                                    'application/xml'         : 'xml'
-                                                };
-
-                                            // set basePath of ace
-                                            ace.config.set('basePath', cdn);
-
-                                            // set base height
-                                            taBase.height(taBase.height());
-
-                                            // detect mode
-                                            mode = ace.require('ace/ext/modelist').getModeForPath('/' + self.file.name).name;
-                                            if (mode === 'text') {
-                                                if (mimeMode[self.file.mime]) {
-                                                    mode = mimeMode[self.file.mime];
-                                                }
-                                            }
-
-                                            // show MIME:mode in title bar
-                                            taBase.prev().children('.elfinder-dialog-title').append(' (' + self.file.mime + ' : ' + mode.split(/[\/\\]/).pop() + ')');
-
-                                            // TextArea button and Setting button
-                                            $('<div class="ui-dialog-buttonset"/>').css('float', 'left')
-                                                .append(
-                                                    $('<button>文本框</button>')
-                                                        .button()
-                                                        .on('click', function(){
-                                                            if (ta.data('ace')) {
-                                                                ta.removeData('ace');
-                                                                editorBase.hide();
-                                                                ta.val(editor.session.getValue()).show().focus();
-                                                                $(this).text('编辑器');
-                                                            } else {
-                                                                ta.data('ace', true);
-                                                                editorBase.show();
-                                                                editor.setValue(ta.hide().val(), -1);
-                                                                editor.focus();
-                                                                $(this).text('文本框');
-                                                            }
-                                                        })
-                                                )
-                                                .append(
-                                                    $('<button>Ace editor setting</button>')
-                                                        .button({
-                                                            icons: {
-                                                                primary: 'ui-icon-gear',
-                                                                secondary: 'ui-icon-triangle-1-e'
-                                                            },
-                                                            text: false
-                                                        })
-                                                        .on('click', function(){
-                                                            editor.showSettingsMenu();
-                                                        })
-                                                )
-                                                .prependTo(taBase.next());
-
-                                            // Base node of Ace editor
-                                            editorBase = $('<div id="'+id+'" style="width:100%; height:100%;"/>').text(ta.val()).insertBefore(ta.hide());
-
-                                            // Ace editor configure
-                                            ta.data('ace', true);
-                                            editor = ace.edit(id);
-                                            ace.require('ace/ext/language_tools');
-                                            ace.require('ace/ext/settings_menu').init(editor);
-                                            editor.$blockScrolling = Infinity;
-                                            editor.setOptions({
-                                                theme: 'ace/theme/dawn',
-                                                mode: 'ace/mode/' + mode,
-                                                fontSize: '14px',
-                                                wrap: true,
-                                                enableBasicAutocompletion: true,
-                                                enableSnippets: true,
-                                                enableLiveAutocompletion: true
-                                            });
-                                            editor.commands.addCommand({
-                                                name : "saveFile",
-                                                bindKey: {
-                                                    win : 'Ctrl-s',
-                                                    mac : 'Command-s'
-                                                },
-                                                exec: function(editor) {
-                                                    self.doSave();
-                                                }
-                                            });
-                                            editor.commands.addCommand({
-                                                name : "closeEditor",
-                                                bindKey: {
-                                                    win : 'Ctrl-w|Ctrl-q',
-                                                    mac : 'Command-w|Command-q'
-                                                },
-                                                exec: function(editor) {
-                                                    self.doCancel();
-                                                }
-                                            });
-
-                                            editor.resize();
-
-                                            dfrd.resolve(editor);
+                // 2nd Arg - before boot up function
+                function(fm, extraObj) {
+                    // `init` event callback function
+                    fm.bind('init', function() {
+                        // Optional for Japanese decoder "extras/encoding-japanese.min"
+                        delete fm.options.rawStringDecoder;
+                        if (fm.lang === 'ja') {
+                            fm.loadScript(
+                                [ fm.baseUrl + 'js/extras/encoding-japanese.min.js' ],
+                                function() {
+                                    if (window.Encoding && Encoding.convert) {
+                                        fm.options.rawStringDecoder = function(s) {
+                                            return Encoding.convert(s,{to:'UNICODE',type:'string'});
                                         };
-
-                                    // init & start
-                                    init();
-
-                                    return dfrd;
-                                },
-                                close : function(textarea, instance) {
-                                    if (instance) {
-                                        instance.destroy();
-                                        $(textarea).show();
                                     }
                                 },
-                                save : function(textarea, instance) {
-                                    instance && $(textarea).data('ace') && (textarea.value = instance.session.getValue());
-                                },
-                                focus : function(textarea, instance) {
-                                    instance && $(textarea).data('ace') && instance.focus();
-                                },
-                                resize : function(textarea, instance, e, data) {
-                                    instance && instance.resize();
-                                }
-                            }
-                        ]
-                    },
-//                    quicklook : {
-//                        // to enable preview with Google Docs Viewer
-//                        googleDocsMimes : ['application/pdf', 'image/tiff', 'application/vnd.ms-office', 'application/msword', 'application/vnd.ms-word', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
-//                    }
+                                { loadType: 'tag' }
+                            );
+                        }
+                    });
+
+                    // Optional for set document.title dynamically.
+                    var title = document.title;
+                    fm.bind('open', function() {
+                        var path = '',
+                            cwd  = fm.cwd();
+                        if (cwd) {
+                            path = fm.path(cwd.hash) || null;
+                        }
+                        document.title = path? path + ':' + title : title;
+                    }).bind('destroy', function() {
+                        document.title = title;
+                    });
                 }
-            });
+            );
         });
     </script>
 </head>
 <body>
-
 <div id="elfinder"></div>
-
 </body>
 </html>

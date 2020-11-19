@@ -84,7 +84,7 @@ public class ElFinderConfig {
             securityConstraint.setWritable(isWritable);
 
             // creates volume pattern and volume security
-            final String volumePattern = Character.toString(defaultVolumeId) + ElFinderConstants.ELFINDER_VOLUME_SERCURITY_REGEX;
+            final String volumePattern = defaultVolumeId + ElFinderConstants.ELFINDER_VOLUME_SERCURITY_REGEX;
             elfinderVolumeSecurities.add(new DefaultVolumeSecurity(volumePattern, securityConstraint));
 
             // prepare next volumeId character

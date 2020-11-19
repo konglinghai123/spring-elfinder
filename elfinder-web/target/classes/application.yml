@@ -1,4 +1,3 @@
-
 server:
   tomcat:
     uri-encoding: UTF-8
@@ -17,25 +16,26 @@ spring:
       charset: utf-8
       force: true
       enabled: true
-    multipart:
-      enabled: true
-      max-file-size: -1
 
+  servlet:
+    multipart:
+      max-file-size: 800MB
+      max-request-size: 800MB
 
 file-manager:
-     thumbnail:
-        width: 80 # 缩略图宽
-     volumes:
-        - Node:
-          source: fileSystem # 暂时只支持本地文件系统
-          alias: Tomcat目录 # 目录别名
-          path: /D:/CR # 映射目录
-          _default: true # 是否默认打开
-          locale:
-          constraint:
-            locked: false # 文件夹是否锁定
-            readable: true # 是否可读
-            writable: true # 是否可写
+  thumbnail:
+    width: 80 # 缩略图宽
+  volumes:
+    - Node:
+      source: fileSystem # 暂时只支持本地文件系统
+      alias: files # 目录别名
+      path: /D:/CR # 映射目录
+      isDefault: true # 是否默认打开
+      locale:
+      constraint:
+        locked: false # 文件夹是否锁定
+        readable: true # 是否可读
+        writable: true # 是否可写
 
 
 

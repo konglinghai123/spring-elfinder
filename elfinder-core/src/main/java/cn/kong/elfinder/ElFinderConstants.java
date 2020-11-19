@@ -5,18 +5,18 @@
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the Trustsystems Desenvolvimento de Sistemas, LTDA. nor the names of its contributors
  *    may be used to endorse or promote products derived from this software without
  *    specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -38,7 +38,10 @@ public final class ElFinderConstants {
     public static final int ELFINDER_FALSE_RESPONSE = 0;
 
     //options
-    public static final String ELFINDER_VERSION_API = "2.1050";
+    public static final String ELFINDER_VERSION_API = "2.1057";
+    public static final String ELFINDER_UPLMAXFILE  = "100";
+    public static final String ELFINDER_UPLMAXSIZE  = "500m";
+
 
     //security
     // regex that matches any character that
@@ -94,4 +97,6 @@ public final class ElFinderConstants {
     public static final String ELFINDER_JSON_RESPONSE_DIM = "dim";
     public static final String ELFINDER_JSON_RESPONSE_ERROR = "error";
     public static final String ELFINDER_JSON_RESPONSE_SIZE = "size";
+    public static final String ELFINDER_JSON_RESPONSE_UPLMAXFILE  = "uplMaxFile";
+    public static final String ELFINDER_JSON_RESPONSE_UPLMAXSIZE  = "uplMaxSize";
 }
