@@ -1,6 +1,8 @@
 server:
   tomcat:
     uri-encoding: UTF-8
+    max-swallow-size: 100MB
+    max-http-form-post-size: 100MB
   port: 8080
 
 
