@@ -44,6 +44,7 @@ import java.io.OutputStream;
 public class PutCommand extends AbstractJsonCommand implements ElfinderCommand {
 
     public static final String ENCODING = "utf-8";
+    public static final String BASE64_FLAG = "data:image/jpeg;base64,";
 
     @Override
     protected void execute(ElfinderStorage elfinderStorage, HttpServletRequest request, JSONObject json) throws Exception {
@@ -51,8 +52,8 @@ public class PutCommand extends AbstractJsonCommand implements ElfinderCommand {
         VolumeHandler file = findTarget(elfinderStorage, target);
         OutputStream os = file.openOutputStream();
         String content = request.getParameter(ElFinderConstants.ELFINDER_PARAMETER_CONTENT);
-        if (content.contains("data:image/jpeg;base64,")) {
-            byte[] bytes = ImageUtil.decodeImageStr(content.substring(23));
+        if (content.contains(BASE64_FLAG)) {
+            byte[] bytes = ImageUtil.decodeImageStr(content.substring(BASE64_FLAG.length()));
             IOUtils.write(bytes, os);
         } else {
             IOUtils.write(content, os, ENCODING);
